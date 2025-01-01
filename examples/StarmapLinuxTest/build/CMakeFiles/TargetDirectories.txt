@@ -1,0 +1,3 @@
+/Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/build/CMakeFiles/starmap.dir
+/Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/build/CMakeFiles/edit_cache.dir
+/Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/build/CMakeFiles/rebuild_cache.dir

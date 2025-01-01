@@ -15,8 +15,8 @@
 // #define GENERATE_BIN
 #define IMAGE_ALPHA_CHANNEL 255
 // TFT dimensions
-#define TFT_W 1024
-#define TFT_H 1024
+#define TFT_W 240
+#define TFT_H 240
 
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);

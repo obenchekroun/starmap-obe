@@ -34,6 +34,7 @@ extern const uint16_t constellation_bound_array[2631];
 const char yale_end_string[33]="YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"; // must be 32 Y characters
 SM starmap;
 char screen_ram[TFT_H][TFT_W];
+size_t nbytes; // to store number of bytes for snprintf
 
 // function prototypes
 void write_png_image(char* filename);
@@ -64,14 +65,14 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 
 
 // ************* main code *****************
-int
-main(void) {
+int main(void) {
   double mag=5;
   rect_s br;
   int i, j;
 
   tm_t mytime;
-  sprintf(starmap.log2ram_buf, "Hello\n");
+  nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
+  snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
 
   starmap.siteLat = 47;
   starmap.siteLon = 122;
@@ -84,7 +85,8 @@ main(void) {
   mytime.tm_year=104; // years since 1900. Example: 104 means 1900+104 = year 2004
 
   starmap.jdtime=starmap.jtime(&mytime);
-  sprintf(starmap.log2ram_buf, "time=%f.\n", starmap.jdtime);
+  nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
+  snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
     
 
   for (i=0;i<TFT_H;i++)

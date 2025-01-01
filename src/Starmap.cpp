@@ -957,33 +957,44 @@ void Starmap::circ_intersect(double x_1, double y_1, double x_2, double y_2,
 		}
 	}
 
-	if (*int_1)
+	if (*int_1) {
 		if ((((y_1 <= *y1) && (*y1 <= y_2)) || ((y_2 <= *y1) && (*y1 <= y_1)))
-		    && (((x_1 <= *x1) && (*x1 <= x_2)) || ((x_2 <= *x1) && (*x1 <= x_1))))
+		    && (((x_1 <= *x1) && (*x1 <= x_2)) || ((x_2 <= *x1) && (*x1 <= x_1)))) {
 		  *int_1 = TRUE;
+		}
 		else
+		{
 		  *int_1 = FALSE;
+		}
 
 		if (*int_1) {
 		inv_gt(*x1, *y1, &lat_1, &lon_1);
 		xform(lat_1, lon_1, &xt1, &yt1, &in);
-		if (!in)
+		if (!in) {
 			*int_1 = FALSE;
+		}
+	}
 	}
 
-	if (*int_2)
+	if (*int_2) {
 		if ((((y_1 <= *y2) && (*y2 <= y_2)) || ((y_2 <= *y2) && (*y2 <= y_1)))
 		    && (((x_1 <= *x2) && (*x2 <= x_2)) || ((x_2 <= *x2) && (*x2 <= x_1))))
+		{
 		  *int_2 = TRUE;
+		}
 		else
+		{
 		  *int_2 = FALSE;
+		}
 
 		if (*int_2) {
 			inv_gt(*x2, *y2, &lat_1, &lon_1);
 			xform(lat_1, lon_1, &xt1, &yt1, &in);
-			if (!in)
+			if (!in) {
 				*int_2 = FALSE;
+			}
 		}
+	}
 }
 
 int Starmap::clipr_xform(double lat1, double lon1, double lat2, double lon2,
@@ -1073,10 +1084,10 @@ if (int_r1) {
 	   then shift the larger by 360 degrees */
 
 	if (fabs(MAX(lon1,lon2) - MIN(lon1,lon2))
-	    > fabs(MAX(lon1,lon2) - 360.0 - MIN(lon1,lon2)))
-	  if (lon2 > 180.0) lon2 -= 360.0;
-	  else lon1 -= 360.0;
-
+	    > fabs(MAX(lon1,lon2) - 360.0 - MIN(lon1,lon2))){
+		if (lon2 > 180.0) {lon2 -= 360.0;}
+		else {lon1 -= 360.0;}
+	}
 	Llat = lat1;
 	Llon = lon1;
 	Rlat = lat2;
@@ -1155,10 +1166,10 @@ void Starmap::drawcurveline(double  lat1, double lon1, double lat2, double lon2,
 
 /* ra difference should be less than 180 degrees: take shortest path */
   if ((xfs_proj_mode == STEREOGR) || (xfs_proj_mode == GNOMONIC)
-      || (xfs_proj_mode == ORTHOGR))
-    if ((lon1 - lon2) > 180.0) lon1 -= 360.0;
-    else if ((lon2 - lon1) > 180.0) lon2 -= 360.0;
-
+      || (xfs_proj_mode == ORTHOGR)) {
+	  if ((lon1 - lon2) > 180.0) {lon1 -= 360.0;}
+	  else if ((lon2 - lon1) > 180.0) {lon2 -= 360.0;}
+  }
   if (great_circle) {
     gcmidpoint(lat1, lon1, lat2, lon2, &mlat, &mlon);
   } else {
@@ -2258,10 +2269,12 @@ void Starmap::plotLine(double fdec, double fra, double tdec, double tra)
 {
 	int vx, vy, vx2, vy2;
 	double cdec1, cra1, cdec2, cra2;
+	size_t nbytes;
 
 	if (clipr_xform(fdec, fra, tdec, tra, &vx, &vy, &vx2, &vy2, FALSE,
 		&cdec1, &cra1, &cdec2, &cra2)) {
-		sprintf(log2ram_buf, "drawing line\n");
+		nbytes = snprintf(NULL, 0, "%s", "drawing line\n") + 1; /* +1 for the '\0' */
+		snprintf(log2ram_buf, nbytes, "drawing line\n");
 		drawcurveline(cdec1, cra1, cdec2, cra2, vx, vy, vx2, vy2, 0, FALSE, 0);
 	}
 }
@@ -2343,10 +2356,12 @@ mydeb=0x11;
 		for (i = 0; i < 360; i += 15) {		// Draw the tick marks at hour angle intervals
 			char hlab[4];
 			int vx, vy, vis;
+			size_t nbytes;
 
             plotLine(0.0, (double) i, 0.0, i + 15.0);
 			plotLine(-tickWid, (double) i, tickWid, (double) i);
-			sprintf(hlab, "%d'", i / 15);  // Format 42
+			nbytes = snprintf(NULL, 0, "%d'", i / 15) + 1; /* +1 for the '\0' */
+			snprintf(hlab, nbytes,"%d'", i / 15);  // Format 42
 			xform(tickWid * (pflip ? 1 : -1), (double) i, &vx, &vy, &vis);
 			if (vis) {
 				TextOut(vx, vy, hlab, strlen(hlab), TEXT_TYPE_CELEST_EQ);
@@ -2388,6 +2403,7 @@ mydeb=0x20;
 		for (i = 0; i < 360; i += 15) {		// Draw the tick marks at 15 degree intervals
 			char hlab[6];
 			int vx, vy, vis;
+			size_t nbytes;
 
 			eqlat = ((PI * 2) / 360.0) * i;
 			pera = fixangle(rtd(atan2((ecos * sin(eqlat) -
@@ -2399,7 +2415,8 @@ mydeb=0x20;
 			eqdec = rtd(asin((esin * sin(eqlat) * cos(dtr(tickWid))) +
 			     		(sin(dtr(tickWid)) * ecos)));
 			plotLine(pedec, pera, eqdec, eqra);
-			sprintf(hlab, "%d''", i); // Format(43)
+			nbytes = snprintf(NULL, 0, "%d''", i) + 1; /* +1 for the '\0' */
+			snprintf(hlab, nbytes,"%d''", i); // Format(43)
 			xform(!pflip ? pedec : eqdec, !pflip ? pera : eqra, &vx, &vy, &vis);
 			if (vis) {
 				TextOut(vx, vy, hlab, strlen(hlab), TEXT_TYPE_ECLIPTIC);
