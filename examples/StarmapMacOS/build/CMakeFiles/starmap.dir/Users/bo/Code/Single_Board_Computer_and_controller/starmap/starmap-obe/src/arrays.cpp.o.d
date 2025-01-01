@@ -1,6 +1,6 @@
-CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.o: \
-  /Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp \
-  /Users/bo/Code/C/starmap/starmap-obe/src/arrays.h \
+CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.o: \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/src/arrays.cpp \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/src/arrays.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/stdint.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/__config \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/__config_site \

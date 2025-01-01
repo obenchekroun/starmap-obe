@@ -7,7 +7,7 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/Users/bo/Code/C/starmap/starmap-obe/examples/StarmapMacOS/CMakeLists.txt"
+  "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapMacOS/CMakeLists.txt"
   "CMakeFiles/3.31.3/CMakeASMCompiler.cmake"
   "CMakeFiles/3.31.3/CMakeCCompiler.cmake"
   "CMakeFiles/3.31.3/CMakeCXXCompiler.cmake"

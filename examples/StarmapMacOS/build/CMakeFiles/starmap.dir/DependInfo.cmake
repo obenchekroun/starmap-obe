@@ -8,9 +8,9 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp" "CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o" "gcc" "CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o.d"
-  "/Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp" "CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.o" "gcc" "CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.o.d"
-  "/Users/bo/Code/C/starmap/starmap-obe/examples/StarmapMacOS/main.cpp" "CMakeFiles/starmap.dir/main.cpp.o" "gcc" "CMakeFiles/starmap.dir/main.cpp.o.d"
+  "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/src/Starmap.cpp" "CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.o" "gcc" "CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.o.d"
+  "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/src/arrays.cpp" "CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.o" "gcc" "CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.o.d"
+  "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapMacOS/main.cpp" "CMakeFiles/starmap.dir/main.cpp.o" "gcc" "CMakeFiles/starmap.dir/main.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

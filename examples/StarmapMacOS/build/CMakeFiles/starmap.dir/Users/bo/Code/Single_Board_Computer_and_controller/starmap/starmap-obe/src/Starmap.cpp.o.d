@@ -1,7 +1,7 @@
-CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o: \
-  /Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp \
-  /Users/bo/Code/C/starmap/starmap-obe/src/Starmap.h \
-  /Users/bo/Code/C/starmap/starmap-obe/src/../examples/StarmapLinuxTest/Arduino.h \
+CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.o: \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/src/Starmap.cpp \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/src/Starmap.h \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/src/../examples/StarmapLinuxTest/Arduino.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/math.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/__config \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/__config_site \
@@ -248,7 +248,7 @@ CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o: \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/_abort.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/sys/_types/_dev_t.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/sys/_types/_mode_t.h \
-  /Users/bo/Code/C/starmap/starmap-obe/src/arrays.h \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/src/arrays.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/stdio.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/stdio.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/_stdio.h \
