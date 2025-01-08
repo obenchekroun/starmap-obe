@@ -54,11 +54,6 @@ add_executable(${PROJECT_NAME}
     main.c
 )
 
-# target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/Config)
-# target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/LCD)
-# target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/GUI)
-# target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/Fonts)
-
 # Include lib png
 find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIR})
