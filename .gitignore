@@ -6,3 +6,5 @@
 .vscode
 releases
 tests/lib
+build/
+.DS_Store
