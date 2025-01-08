@@ -9,14 +9,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 
 
 // defines
 // #define GENERATE_BIN
 #define IMAGE_ALPHA_CHANNEL 255
 // TFT dimensions
-#define TFT_W 240
-#define TFT_H 240
+#define TFT_W 1024
+#define TFT_H 1024
 
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);
@@ -34,6 +35,7 @@ extern const uint16_t constellation_bound_array[2631];
 const char yale_end_string[33]="YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"; // must be 32 Y characters
 SM starmap;
 char screen_ram[TFT_H][TFT_W];
+size_t nbytes; // to store number of bytes for snprintf
 
 // function prototypes
 void write_png_image(char* filename);
@@ -64,27 +66,42 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 
 
 // ************* main code *****************
-int
-main(void) {
+int main(void) {
   double mag=5;
   rect_s br;
   int i, j;
 
   tm_t mytime;
-  sprintf(starmap.log2ram_buf, "Hello\n");
+  nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
+  snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
 
-  starmap.siteLat = 47;
-  starmap.siteLon = 122;
+  //starmap.siteLat = 47; // default; used for the out_ok.png
+  //starmap.siteLon = 122; // default; used for the out_ok.png
+  starmap.siteLat = 33.589886; // casablanca, Morocco
+  starmap.siteLon = -7.603869; // Casablanca, Morocco
 
-  mytime.tm_sec=0;   // seconds 0-61?
-  mytime.tm_min=18;  // minutes 0-59
-  mytime.tm_hour=23;  // hour 0-23
-  mytime.tm_mday=16;  // date 1-31
-  mytime.tm_mon=7; // month 0-11
-  mytime.tm_year=104; // years since 1900. Example: 104 means 1900+104 = year 2004
+  // default; used for the out_ok.png
+  // mytime.tm_sec=0;   // seconds 0-61?
+  // mytime.tm_min=18;  // minutes 0-59
+  // mytime.tm_hour=23;  // hour 0-23
+  // mytime.tm_mday=16;  // date 1-31
+  // mytime.tm_mon=7; // month 0-11
+  // mytime.tm_year=104; // years since 1900. Example: 104 means 1900+104 = year 2004
+
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
+  mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
+  mytime.tm_min=tm.tm_min;  // minutes 0-59
+  mytime.tm_hour=tm.tm_hour;  // hour 0-23
+  mytime.tm_mday=tm.tm_mday;  // date 1-31
+  mytime.tm_mon=tm.tm_mon; // month 0-11
+  mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
+  printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d\nLocation: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
+
 
   starmap.jdtime=starmap.jtime(&mytime);
-  sprintf(starmap.log2ram_buf, "time=%f.\n", starmap.jdtime);
+  nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
+  snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
     
 
   for (i=0;i<TFT_H;i++)

@@ -1,3 +1,0 @@
-/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapMacOS/build/CMakeFiles/starmap.dir
-/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapMacOS/build/CMakeFiles/edit_cache.dir
-/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapMacOS/build/CMakeFiles/rebuild_cache.dir
