@@ -15,8 +15,8 @@
 // #define GENERATE_BIN
 #define IMAGE_ALPHA_CHANNEL 255
 // TFT dimensions
-#define TFT_W 1024
-#define TFT_H 1024
+#define TFT_W 240
+#define TFT_H 240
 
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);
@@ -73,15 +73,15 @@ main(void) {
   tm_t mytime;
   sprintf(starmap.log2ram_buf, "Hello\n");
 
-  starmap.siteLat = 33.589886;
-  starmap.siteLon = -7.603869;
+  starmap.siteLat = 47;
+  starmap.siteLon = 122;
 
-  mytime.tm_sec=47;   // seconds 0-61?
-  mytime.tm_min=37;  // minutes 0-59
-  mytime.tm_hour=10;  // hour 0-23
-  mytime.tm_mday=8;  // date 1-31
-  mytime.tm_mon=0; // month 0-11
-  mytime.tm_year=125; // years since 1900. Example: 104 means 1900+104 = year 2004
+  mytime.tm_sec=0;   // seconds 0-61?
+  mytime.tm_min=18;  // minutes 0-59
+  mytime.tm_hour=23;  // hour 0-23
+  mytime.tm_mday=16;  // date 1-31
+  mytime.tm_mon=7; // month 0-11
+  mytime.tm_year=104; // years since 1900. Example: 104 means 1900+104 = year 2004
 
   starmap.jdtime=starmap.jtime(&mytime);
   sprintf(starmap.log2ram_buf, "time=%f.\n", starmap.jdtime);

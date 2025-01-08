@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
 
 # Definitions for compiler
-add_definitions(-DLINUX_BUILD=1 -DUSE_DEV_LIB)
+add_definitions(-DLINUX_BUILD=1 -DUSE_DEV_LIB) #USE_DEV_LIB is needed for Waveshare driver to use lgpio library
 
 # Directories with headers of lib
 include_directories(${PROJECT_NAME} ../../lib/display/Config)

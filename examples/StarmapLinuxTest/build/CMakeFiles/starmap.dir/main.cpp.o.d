@@ -1,5 +1,5 @@
 CMakeFiles/starmap.dir/main.cpp.o: \
-  /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/main.cpp \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/examples/StarmapLinuxTest/main.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/stdio.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/__config \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/__config_site \
@@ -38,8 +38,8 @@ CMakeFiles/starmap.dir/main.cpp.o: \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/_ctermid.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/sys/_types/_off_t.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/sys/_types/_ssize_t.h \
-  /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/../../src/Starmap.h \
-  /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/../../src/../examples/StarmapLinuxTest/Arduino.h \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/examples/StarmapLinuxTest/../../src/Starmap.h \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/examples/StarmapLinuxTest/../../src/../examples/StarmapLinuxTest/Arduino.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/math.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/math.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/c++/v1/__math/abs.h \
@@ -258,7 +258,7 @@ CMakeFiles/starmap.dir/main.cpp.o: \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/_abort.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/sys/_types/_dev_t.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.1.sdk/usr/include/sys/_types/_mode_t.h \
-  /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/../../src/arrays.h \
+  /Users/bo/Code/Single\ Board\ Computer\ and\ controller/starmap/starmap-obe/examples/StarmapLinuxTest/../../src/arrays.h \
   /opt/homebrew/include/png.h /opt/homebrew/include/pnglibconf.h \
   /opt/homebrew/include/pngconf.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include/limits.h \

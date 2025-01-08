@@ -102,23 +102,38 @@ It will generate a star chart PNG file (called out.png) which can be inspected.
 
 ### Waveshare test library
 
-You can use Waveshare test library to test the display. It can be downloaded with the following :
+You can use Waveshare test library to test the display. It is included in the `examples/screentest` folder :
+
+``` sh
+cd starmap/examples/screentest
+mkdir -p build
+cd build
+cmake ..
+make
+```
+
+and then test it :
+``` sh
+sudo ./screentest 1.28
+```
+
+#### Downloading from Waveshare website
+You can also use the Waveshare test library to test the display bu downloading it from Waveshare website. Here are the instructions found in the [wiki](https://www.waveshare.com/wiki/1.28inch_LCD_Module) :
+
 ``` sh
 sudo wget https://files.waveshare.com/upload/8/8d/LCD_Module_RPI_code.zip
 sudo unzip ./LCD_Module_RPI_code.zip 
 cd LCD_Module_RPI_code/RaspberryPi/
 ```
 
-then built : 
-
+then build it : 
 ``` sh
 cd c
 sudo make clean
 sudo make -j 8
 ```
 
- and tested for the corresponding display :
-
+ and test it for the corresponding display :
 ``` sh
 #1.28inch LCD Module
 sudo ./main 1.28

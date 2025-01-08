@@ -57,10 +57,10 @@ RM = /opt/homebrew/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest
+CMAKE_SOURCE_DIR = "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapLinuxTest"
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/build
+CMAKE_BINARY_DIR = "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapLinuxTest/build"
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/build/CMakeFiles /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapLinuxTest/build/CMakeFiles" "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapLinuxTest/build//CMakeFiles/progress.marks"
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/bo/Code/C/starmap/starmap-obe/examples/StarmapLinuxTest/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start "/Users/bo/Code/Single Board Computer and controller/starmap/starmap-obe/examples/StarmapLinuxTest/build/CMakeFiles" 0
 .PHONY : all
 
 # The main clean target
@@ -129,53 +129,53 @@ starmap/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/build
 .PHONY : starmap/fast
 
-Users/bo/Code/C/starmap/starmap-obe/src/Starmap.o: Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/Starmap.o
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.o: Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.o
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.o
 
 # target to build an object file
-Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.o
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.o
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.o
 
-Users/bo/Code/C/starmap/starmap-obe/src/Starmap.i: Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.i
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/Starmap.i
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.i: Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.i
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.i
 
 # target to preprocess a source file
-Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.i
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.i
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.i
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.i
 
-Users/bo/Code/C/starmap/starmap-obe/src/Starmap.s: Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.s
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/Starmap.s
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.s: Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.s
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.s
 
 # target to generate assembly for a file
-Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.s
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/Starmap.cpp.s
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.s
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.cpp.s
 
-Users/bo/Code/C/starmap/starmap-obe/src/arrays.o: Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.o
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/arrays.o
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.o: Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.o
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.o
 
 # target to build an object file
-Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.o
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.o
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.o
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.o
 
-Users/bo/Code/C/starmap/starmap-obe/src/arrays.i: Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.i
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/arrays.i
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.i: Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.i
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.i
 
 # target to preprocess a source file
-Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.i
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.i
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.i
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.i
 
-Users/bo/Code/C/starmap/starmap-obe/src/arrays.s: Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.s
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/arrays.s
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.s: Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.s
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.s
 
 # target to generate assembly for a file
-Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.s
-.PHONY : Users/bo/Code/C/starmap/starmap-obe/src/arrays.cpp.s
+Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/starmap.dir/build.make CMakeFiles/starmap.dir/Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.s
+.PHONY : Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.cpp.s
 
 main.o: main.cpp.o
 .PHONY : main.o
@@ -210,12 +210,12 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... starmap"
-	@echo "... Users/bo/Code/C/starmap/starmap-obe/src/Starmap.o"
-	@echo "... Users/bo/Code/C/starmap/starmap-obe/src/Starmap.i"
-	@echo "... Users/bo/Code/C/starmap/starmap-obe/src/Starmap.s"
-	@echo "... Users/bo/Code/C/starmap/starmap-obe/src/arrays.o"
-	@echo "... Users/bo/Code/C/starmap/starmap-obe/src/arrays.i"
-	@echo "... Users/bo/Code/C/starmap/starmap-obe/src/arrays.s"
+	@echo "... Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.o"
+	@echo "... Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.i"
+	@echo "... Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/Starmap.s"
+	@echo "... Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.o"
+	@echo "... Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.i"
+	@echo "... Users/bo/Code/Single_Board_Computer_and_controller/starmap/starmap-obe/src/arrays.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
