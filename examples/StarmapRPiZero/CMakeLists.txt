@@ -14,11 +14,11 @@ set(CMAKE_CXX_STANDARD 17)
 # Definitions for compiler
 add_definitions(-DLINUX_BUILD=1 -DUSE_DEV_LIB) #USE_DEV_LIB is needed for Waveshare driver to use lgpio library
 
-# Directories with headers of lib
-include_directories(${PROJECT_NAME} ../../lib/display/Config)
-include_directories(${PROJECT_NAME} ../../lib/display/LCD)
-include_directories(${PROJECT_NAME} ../../lib/display/GUI)
-include_directories(${PROJECT_NAME} ../../lib/display/Fonts)
+# # Directories with headers of lib
+# include_directories(${PROJECT_NAME} ../../lib/display/Config)
+# include_directories(${PROJECT_NAME} ../../lib/display/LCD)
+# include_directories(${PROJECT_NAME} ../../lib/display/GUI)
+# include_directories(${PROJECT_NAME} ../../lib/display/Fonts)
 
 # Tell CMake where to find the executable source file
 # Whenever this glob's value changes, cmake will rerun and update the build with the
@@ -40,6 +40,61 @@ add_executable(${PROJECT_NAME}
     ${disp_sources}
     main.cpp
 )
+
+# add_executable(${PROJECT_NAME}
+#     ../../src/Starmap.cpp
+#     ../../src/arrays.cpp
+#     # ../../lib/display/Config/Debug.h
+#     ../../lib/display/Config/DEV_Config.c
+#     ../../lib/display/Config/DEV_Config.h
+#     # ../../lib/display/Fonts/fonts.h
+#     # ../../lib/display/Fonts/font8.c
+#     # ../../lib/display/Fonts/font12.c
+#     # ../../lib/display/Fonts/font12CN.c
+#     # ../../lib/display/Fonts/font16.c
+#     # ../../lib/display/Fonts/font20.c
+#     # ../../lib/display/Fonts/font24.c
+#     # ../../lib/display/Fonts/font24CN.c
+#     # ../../lib/display/Fonts/font48.c
+#     # ../../lib/display/Fonts/font50.c
+#     # ../../lib/display/GUI/GUI_BMP.h
+#     # ../../lib/display/GUI/GUI_BMP.c
+#     # ../../lib/display/GUI/GUI_Paint.h
+#     # ../../lib/display/GUI/GUI_Paint.c
+#     # ../../lib/display/LCD/LCD_0in96.h
+#     # ../../lib/display/LCD/LCD_0in96.c
+#     # ../../lib/display/LCD/LCD_1in3.h
+#     # ../../lib/display/LCD/LCD_1in3.c
+#     # ../../lib/display/LCD/LCD_1in8.h
+#     # ../../lib/display/LCD/LCD_1in8.c
+#     # ../../lib/display/LCD/LCD_1in9.h
+#     # ../../lib/display/LCD/LCD_1in9.c
+#     # ../../lib/display/LCD/LCD_1in14.h
+#     # ../../lib/display/LCD/LCD_1in14.c
+#     # ../../lib/display/LCD/LCD_1in28.h
+#     # ../../lib/display/LCD/LCD_1in28.c
+#     # ../../lib/display/LCD/LCD_1in47.h
+#     # ../../lib/display/LCD/LCD_1in47.c
+#     # ../../lib/display/LCD/LCD_1in54.h
+#     # ../../lib/display/LCD/LCD_1in54.c
+#     # ../../lib/display/LCD/LCD_1in69.h
+#     # ../../lib/display/LCD/LCD_1in69.c
+#     # ../../lib/display/LCD/LCD_2inch.h
+#     # ../../lib/display/LCD/LCD_2inch.c
+#     # ../../lib/display/LCD/LCD_2inch4.h
+#     # ../../lib/display/LCD/LCD_2inch4.c
+#     main.cpp
+# )
+
+# include_directories(${PROJECT_NAME} ../../lib/display/Config)
+# include_directories(${PROJECT_NAME} ../../lib/display/LCD)
+# include_directories(${PROJECT_NAME} ../../lib/display/GUI)
+# include_directories(${PROJECT_NAME} ../../lib/display/Fonts)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/Config)
+target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/LCD)
+target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/GUI)
+target_include_directories(${PROJECT_NAME} PRIVATE ../../lib/display/Fonts)
 
 # Include lib png
 find_package(PNG REQUIRED)

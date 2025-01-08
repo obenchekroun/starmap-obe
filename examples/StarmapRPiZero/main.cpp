@@ -1,7 +1,9 @@
 // ********** Starmap main code *************
-// rev 1 - shabaz - May 2024
+// rev 1 - obenchekroun - Jan 2025
 //
 
+// ******** includes ********
+// General libraries
 #include <stdio.h>
 #include "../../src/Starmap.h"
 #include <png.h>
@@ -10,15 +12,44 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+#include <signal.h>     //signal()
 
+// Display libraries
+extern "C" {
+  #include "../../lib/display/Config/DEV_Config.h"
+  #include "../../lib/display/Config/Debug.h"
+  #include "../../lib/display/LCD/LCD_1in28.h"
+  #include "../../lib/display/GUI/GUI_Paint.h"
+  #include "../../lib/display/GUI/GUI_BMP.h"
+}
 
-// defines
+// ******** defines ********
 // #define GENERATE_BIN
+#define FOREVER 1
+#define DELAY_MS delay
+// time offset, example: 1 hour ahead of UTC (e.g. British Summer Time) is 1
+#define DISPLAYED_TIME_OFFSET 1
 #define IMAGE_ALPHA_CHANNEL 255
 // TFT dimensions
-#define TFT_W 1024
-#define TFT_H 1024
+#define TFT_W 240
+#define TFT_H 240
+// default co-ordinates, lat: deg N, lon: deg W
+#define DEFAULT_LAT 33.589886
+#define DEFAULT_LON -7.603869
+//Some colors in RGB565 format for the display
+#define SM_COL_COORD_GRID   0x9492
+#define SM_COL_ECLIPTIC     0xf800
+#define SM_COL_CONSTEL      0xd6da
+#define SM_COL_STARDIM      0x65e9
+#define SM_COL_STARBRIGHT   0xa784
+#define SM_COL_STARTEXT     0xffff
+#define SM_COL_MOON_BRIGHT  0xff11
+#define SM_COL_MOON_DIM     0xff22
+#define SM_COL_MOON_DARK    0x01ff
+#define SM_COL_MOON_PHTEXT  0x00ff
+#define SM_COL_TEXT_GENERIC 0xc618
 
+// ***** class based on Starmap ******
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);
     //void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
@@ -26,7 +57,8 @@ class SM : public Starmap {
     int storage_read(uint32_t addr, char* data, uint16_t len);
 };
 
-// global vars
+// ******** global variables ********
+// starmap and yale array extraction variables
 const char id_string[12]="starmap v01"; // must be 11 characters
 extern const unsigned char yale_array[112217];
 extern const unsigned char constellation_array[12960]; // constellation names array
@@ -37,15 +69,21 @@ SM starmap;
 char screen_ram[TFT_H][TFT_W];
 size_t nbytes; // to store number of bytes for snprintf
 
-// function prototypes
+// ******** function prototypes ************
 void write_png_image(char* filename);
+void LCD_1IN28_test(void);
 
-// plot_pixel
+// ******* plot_pixel function ******
 void SM::plot_pixel(uint16_t color, int x, int y) {
-    if (x>TFT_W) return;
-    if (x<0) return;
-    if (y>TFT_H) return;
-    if (y<0) return;
+    // if (x>TFT_W) return;
+    // if (x<0) return;
+    // if (y>TFT_H) return;
+    // if (y<0) return;
+    if (x<0) x=0;
+    if (y<0) y=0;
+    if (x>=TFT_W) x=TFT_W-1;
+    if (y>=TFT_H) y=TFT_H-1;
+
     if (color==0) {
         screen_ram[y][x] = 0;
     } else if (color <= 0x00ff) {
@@ -55,8 +93,11 @@ void SM::plot_pixel(uint16_t color, int x, int y) {
     } else {
         screen_ram[y][x] = 3;
     }
+   // Paint_SetPixel(x, y, color);
+   Paint_DrawPoint(x,y,color,DOT_PIXEL_1X1,DOT_FILL_AROUND);
 }
 
+// ******* storage_read function *******
 int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
     // printf("storage_read 0x%06x\n", addr);
     addr = addr - 0x08c00;
@@ -79,6 +120,51 @@ int main(void) {
   //starmap.siteLon = 122; // default; used for the out_ok.png
   starmap.siteLat = 33.589886; // casablanca, Morocco
   starmap.siteLon = -7.603869; // Casablanca, Morocco
+
+  // Overrides some of the default colors
+  starmap.col_coord_grid = SM_COL_COORD_GRID;
+  starmap.col_ecliptic = SM_COL_ECLIPTIC;
+  starmap.col_constel = SM_COL_CONSTEL;
+  starmap.col_stardim = SM_COL_STARDIM;
+  starmap.col_starbright = SM_COL_STARBRIGHT;
+  starmap.col_startext = SM_COL_STARTEXT;
+  starmap.col_moon_bright = SM_COL_MOON_BRIGHT;
+  starmap.col_moon_dim = SM_COL_MOON_DIM;
+  starmap.col_moon_dark = SM_COL_MOON_DARK;
+  starmap.col_moon_phtext = SM_COL_TEXT_GENERIC;
+  starmap.col_constel_text = SM_COL_TEXT_GENERIC;
+  starmap.col_bright_st_text = SM_COL_STARBRIGHT;
+  starmap.col_bayerf_text = SM_COL_TEXT_GENERIC;
+  starmap.col_celest_eq_text = SM_COL_TEXT_GENERIC;
+  starmap.col_ecliptic_text = SM_COL_ECLIPTIC;
+// Setting up the screen
+  printf("Setting up the screen!\n");
+  //LCD_1IN28_test();
+  /* Module Init */
+  if(DEV_ModuleInit() != 0){
+        DEV_ModuleExit();
+        exit(0);
+  }
+  /* LCD Init */
+  //printf("1.28inch LCD demo...\r\n");
+  LCD_1IN28_Init(HORIZONTAL);
+  LCD_1IN28_Clear(BLACK);
+  LCD_SetBacklight(1023);
+
+  UWORD *BlackImage;
+  UDOUBLE Imagesize = LCD_1IN28_HEIGHT*LCD_1IN28_WIDTH*2;
+  printf("Imagesize = %d\r\n", Imagesize);
+  if((BlackImage = (UWORD *)malloc(Imagesize)) == NULL) {
+      printf("Failed to apply for black memory...\r\n");
+      exit(0);
+  }
+  // /*1.Create a new image cache named IMAGE_RGB and fill it with white*/
+  Paint_NewImage(BlackImage, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT, 0, BLACK, 16);
+  Paint_Clear(BLACK);
+  Paint_SetRotate(ROTATE_0);
+	// /* GUI */
+  printf("Screen Setup\r\n");
+  sleep(3);
 
   // default; used for the out_ok.png
   // mytime.tm_sec=0;   // seconds 0-61?
@@ -121,7 +207,7 @@ int main(void) {
   starmap.do_constellation_text = 0;
   starmap.paintSky(mag, &br);
 
-   write_png_image((char*)"out.png");
+  write_png_image((char*)"out.png");
 
 #ifdef GENERATE_BIN
   // process Yale
@@ -160,7 +246,15 @@ int main(void) {
 
 #endif // GENERATE_BIN
 
+    // Displaying the image
+    LCD_1IN28_Display(BlackImage);
+
+    free(BlackImage);
+    BlackImage = NULL;
+	DEV_ModuleExit();
+
   printf("done!\n");
+
   return(0);
 }
 
@@ -281,7 +375,70 @@ void write_png_image(char* filename)
     }
 }
 
+void LCD_1IN28_test()
+{
+    // Exception handling:ctrl + c
+    signal(SIGINT, Handler_1IN28_LCD);
 
+    /* Module Init */
+	if(DEV_ModuleInit() != 0){
+        DEV_ModuleExit();
+        exit(0);
+    }
+
+    /* LCD Init */
+	printf("1.28inch LCD demo...\r\n");
+	LCD_1IN28_Init(HORIZONTAL);
+	LCD_1IN28_Clear(BLACK);
+	LCD_SetBacklight(1023);
+
+    UWORD *BlackImage;
+    UDOUBLE Imagesize = LCD_1IN28_HEIGHT*LCD_1IN28_WIDTH*2;
+    printf("Imagesize = %d\r\n", Imagesize);
+    if((BlackImage = (UWORD *)malloc(Imagesize)) == NULL) {
+        printf("Failed to apply for black memory...\r\n");
+        exit(0);
+    }
+    // /*1.Create a new image cache named IMAGE_RGB and fill it with white*/
+    Paint_NewImage(BlackImage, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT, 0, BLACK, 16);
+    Paint_Clear(BLACK);
+	Paint_SetRotate(ROTATE_0);
+	// /* GUI */
+    printf("drawing...\r\n");
+    // /*2.Drawing on the image*/
+	Paint_DrawCircle(120,120, 118, BLUE ,DOT_PIXEL_2X2,DRAW_FILL_EMPTY);
+
+    Paint_DrawLine  (120, 1, 120, 12,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
+    Paint_DrawLine  (120, 228, 120, 240,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
+    Paint_DrawLine  (1, 120, 12, 120,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
+    Paint_DrawLine  (228, 120, 240, 120,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
+
+    Paint_SetPixel(50, 50, GREEN);
+
+    //Paint_DrawImage(gImage_70X70, 85, 25, 70, 70);
+    Paint_DrawString_EN(123, 123, "Starmap",&Font16,  BLACK, GREEN);
+
+	Paint_DrawLine  (120, 120, 70, 70,YELLOW ,DOT_PIXEL_3X3,LINE_STYLE_SOLID);
+	Paint_DrawLine  (120, 120, 176, 64,BLUE ,DOT_PIXEL_3X3,LINE_STYLE_SOLID);
+	Paint_DrawLine  (120, 120, 120, 210,RED ,DOT_PIXEL_2X2,LINE_STYLE_SOLID);
+
+	// /*3.Refresh the picture in RAM to LCD*/
+    LCD_1IN28_Display(BlackImage);
+    DEV_Delay_ms(4000);
+
+    // /* show bmp */
+	printf("show bmp\r\n");
+	GUI_ReadBmp("./pic/LCD_1inch28_1.bmp");
+
+    LCD_1IN28_Display(BlackImage);
+    DEV_Delay_ms(2000);
+
+
+    // /* Module Exit */
+    free(BlackImage);
+    BlackImage = NULL;
+	DEV_ModuleExit();
+}
 
 
 // ************ Yale star data *****************
