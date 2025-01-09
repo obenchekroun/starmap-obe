@@ -104,7 +104,7 @@ main(void) {
   starmap.do_constellation_text = 0;
   starmap.paintSky(mag, &br);
 
-   write_png_image((char*)"out.png");
+   write_png_image((char*)"sky.png");
 
 #ifdef GENERATE_BIN
   // process Yale

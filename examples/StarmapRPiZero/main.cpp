@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+#include <errno.h>
 //#include <signal.h>     //signal()
 
 // Display libraries
@@ -37,18 +38,6 @@ extern "C" {
 #define DEFAULT_LAT 33.589886
 #define DEFAULT_LON -7.603869
 //Some colors in RGB565 format for the display
-// #define SM_COL_COORD_GRID   0x9492
-// #define SM_COL_ECLIPTIC     0xf800
-// #define SM_COL_CONSTEL      0x8c71
-// #define SM_COL_STARDIM      0x65e9
-// #define SM_COL_STARBRIGHT   0xa784
-// #define SM_COL_STARTEXT     0xffff
-// #define SM_COL_MOON_BRIGHT  0xff11
-// #define SM_COL_MOON_DIM     0xff22
-// #define SM_COL_MOON_DARK    0x01ff
-// #define SM_COL_MOON_PHTEXT  0x00ff
-// #define SM_COL_TEXT_GENERIC 0xc618
-
 #define SM_COL_COORD_GRID        0x4a49
 #define SM_COL_ECLIPTIC          0xab91
 #define SM_COL_CONSTEL           0x326b
@@ -77,6 +66,7 @@ const uint16_t font10_12[4][12] = {
 #define SOUTH_SYMBOL 2
 #define WEST_SYMBOL 3
 #define NESW_COLOR 0xf800
+#define DEFAULT_UPDATE_DELAY 5 // in minutes
 
 
 // ***** class based on Starmap ******
@@ -96,14 +86,19 @@ extern const uint16_t constellation_lines_array[3882]; // join-the-dots lines
 extern const uint16_t constellation_bound_array[2631];
 const char yale_end_string[33]="YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"; // must be 32 Y characters
 SM starmap;
+// for the png
 char screen_ram[TFT_H][TFT_W];
+
 size_t nbytes; // to store number of bytes for snprintf
+// update period delay
+double starmap_update_period = DEFAULT_UPDATE_DELAY * 60;  // multiply by 60 to convert minutes to seconds
 
 // ******** function prototypes ************
 void write_png_image(char* filename);
 void plot_char_10_12(char c, int x, int y, int color);  // only supports N, E, S, W characters
 void disp_lat_lon(double lat, double lon, int x, int y, int col);
 void disp_time(int hr, int min, int x, int y, int col);
+int msleep(long msec);
 
 // ******* plot_pixel function ******
 void SM::plot_pixel(uint16_t color, int x, int y) {
@@ -140,118 +135,65 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 
 // ************* main code *****************
 int main(void) {
-  double mag=5;
-  rect_s br;
-  int i, j;
-  double lat, lon;
-  int hr, min, sec;  // used to store the displayed time
+    double mag=5;
+    rect_s br;
+    int i, j;
+    int hr, min;
+    int old_min = -1;
+    double lat, lon;
+    tm_t mytime; // for setting time of Starmap object
+    time_t t; // get current time from system
+    time_t ts; // timestamp to check if period delay of update has passed
+    struct tm tm; // structure for the time
+    UWORD *BlackImage;
+    UDOUBLE Imagesize;
 
-  tm_t mytime;
-  nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
-  snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
+    nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
+    snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
 
-  starmap.siteLat = 33.589886; // casablanca, Morocco
-  starmap.siteLon = -7.603869; // Casablanca, Morocco
+    starmap.siteLat = DEFAULT_LAT; // casablanca, Morocco
+    starmap.siteLon = DEFAULT_LON; // Casablanca, Morocco
 
-  // Overrides some of the default colors
-  starmap.col_coord_grid = SM_COL_COORD_GRID;
-  starmap.col_ecliptic = SM_COL_ECLIPTIC;
-  starmap.col_constel = SM_COL_CONSTEL;
-  starmap.col_stardim = SM_COL_STARDIM;
-  starmap.col_starbright = SM_COL_STARBRIGHT;
-  starmap.col_startext = SM_COL_STARTEXT;
-  starmap.col_moon_bright = SM_COL_MOON_BRIGHT;
-  starmap.col_moon_dim = SM_COL_MOON_DIM;
-  starmap.col_moon_dark = SM_COL_MOON_DARK;
-  starmap.col_moon_phtext = SM_COL_MOON_PHTEXT;
-  starmap.col_constel_text = SM_COL_CONSTEL_TEXT;
-  starmap.col_bright_st_text = SM_COL_STARBRIGHT_TEXT;
-  starmap.col_ecliptic_text = SM_COL_ECLIPTIC_TEXT;
-  starmap.col_celest_eq_text = SM_COL_CELEST_EQ_TEXT;
-  starmap.col_bayerf_text = SM_COL_TEXT_GENERIC;
-  // Setting up the screen
-  printf("Setting up the screen!\n");
-  /* Module Init */
-  if(DEV_ModuleInit() != 0){
+    // Overrides some of the default colors
+    starmap.col_coord_grid = SM_COL_COORD_GRID;
+    starmap.col_ecliptic = SM_COL_ECLIPTIC;
+    starmap.col_constel = SM_COL_CONSTEL;
+    starmap.col_stardim = SM_COL_STARDIM;
+    starmap.col_starbright = SM_COL_STARBRIGHT;
+    starmap.col_startext = SM_COL_STARTEXT;
+    starmap.col_moon_bright = SM_COL_MOON_BRIGHT;
+    starmap.col_moon_dim = SM_COL_MOON_DIM;
+    starmap.col_moon_dark = SM_COL_MOON_DARK;
+    starmap.col_moon_phtext = SM_COL_MOON_PHTEXT;
+    starmap.col_constel_text = SM_COL_CONSTEL_TEXT;
+    starmap.col_bright_st_text = SM_COL_STARBRIGHT_TEXT;
+    starmap.col_ecliptic_text = SM_COL_ECLIPTIC_TEXT;
+    starmap.col_celest_eq_text = SM_COL_CELEST_EQ_TEXT;
+    starmap.col_bayerf_text = SM_COL_TEXT_GENERIC;
+    // Setting up the screen
+    printf("Setting up the screen!\n");
+    /* Module Init */
+    if(DEV_ModuleInit() != 0){
         DEV_ModuleExit();
         exit(0);
-  }
-  /* LCD Init */
-  LCD_1IN28_Init(HORIZONTAL);
-  LCD_1IN28_Clear(BLACK);
-  LCD_SetBacklight(1023);
+    }
+    /* LCD Init */
+    LCD_1IN28_Init(HORIZONTAL);
+    LCD_1IN28_Clear(BLACK);
+    LCD_SetBacklight(1023);
+    printf("Screen Setup\r\n");
 
-  // Creating image Canvas
-  UWORD *BlackImage;
-  UDOUBLE Imagesize = LCD_1IN28_HEIGHT*LCD_1IN28_WIDTH*2;
-  printf("Imagesize = %d\r\n", Imagesize);
-  if((BlackImage = (UWORD *)malloc(Imagesize)) == NULL) {
-      printf("Failed to apply for black memory...\r\n");
-      exit(0);
-  }
-  // Create a new image cache named IMAGE_RGB and fill it with white
-  Paint_NewImage(BlackImage, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT, 0, BLACK, 16);
-  Paint_Clear(BLACK);
-  Paint_SetRotate(ROTATE_0);
-  printf("Screen Setup\r\n");
-
-  // Define time
-  time_t t = time(NULL);
-  struct tm tm = *localtime(&t);
-  mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
-  mytime.tm_min=tm.tm_min;  // minutes 0-59
-  mytime.tm_hour=tm.tm_hour;  // hour 0-23
-  mytime.tm_mday=tm.tm_mday;  // date 1-31
-  mytime.tm_mon=tm.tm_mon; // month 0-11
-  mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
-  printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d\nLocation: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
-  hr = mytime.tm_hour;
-  min = mytime.tm_min;
-  sec = mytime.tm_sec;
-
-  starmap.jdtime=starmap.jtime(&mytime);
-  nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
-  snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
-    
-  // Setting up array for PNG
-  for (i=0;i<TFT_H;i++)
-  {
-    for (j=0;j<TFT_W;j++)
-    {
-      screen_ram[i][j]=0;
-      }
-  }
-
-  // Setting up rectabgle for Starmap class
-  br.left=0;
-  br.right=TFT_W;
-  br.top=0;
-  br.bottom=TFT_H;
-
-  starmap.set_col(1);
-  starmap.do_constellation_text = 0;
-  // Painting the sky
-  starmap.paintSky(mag, &br);
-
-  // Draw compass on screen
-  plot_char_10_12(NORTH_SYMBOL, 115, 18, NESW_COLOR);
-  plot_char_10_12(EAST_SYMBOL, 3, 125, NESW_COLOR);
-  plot_char_10_12(SOUTH_SYMBOL, 115, 234, NESW_COLOR);
-  plot_char_10_12(WEST_SYMBOL, 225, 125, NESW_COLOR);
-
-  // Draw lat and long on screen
-  lat = starmap.siteLat;
-  lon = starmap.siteLon;
-  disp_lat_lon(lat, lon, 38, 190, WHITE);
-  // Draw time on screen
-  disp_time(hr, min, 92, 205, WHITE);
-
-
-  //Create an image of the sky
-  write_png_image((char*)"sky.png");
-
-  // Displaying the image
-  LCD_1IN28_Display(BlackImage);
+    // Creating image Canvas
+    Imagesize = LCD_1IN28_HEIGHT*LCD_1IN28_WIDTH*2;
+    //printf("Imagesize = %d\r\n", Imagesize);
+    if((BlackImage = (UWORD *)malloc(Imagesize)) == NULL) {
+        printf("Failed to apply for black memory...\r\n");
+        exit(0);
+    }
+    // Create a new image cache named IMAGE_RGB and fill it with white
+    Paint_NewImage(BlackImage, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT, 0, BLACK, 16);
+    Paint_Clear(BLACK);
+    Paint_SetRotate(ROTATE_0);
 
 #ifdef GENERATE_BIN
   // process Yale
@@ -290,7 +232,94 @@ int main(void) {
 
 #endif // GENERATE_BIN
 
-  printf("done!\n");
+    while(FOREVER) {
+
+        // Get time
+        t = time(NULL);
+        tm = *localtime(&t);
+        hr = tm.tm_hour;
+        min = tm.tm_min;
+
+        printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
+
+        mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
+        mytime.tm_min=tm.tm_min;  // minutes 0-59
+        mytime.tm_hour=tm.tm_hour;  // hour 0-23
+        mytime.tm_mday=tm.tm_mday;  // date 1-31
+        mytime.tm_mon=tm.tm_mon; // month 0-11
+        mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
+
+        // Setup time and location of Starmap object
+        starmap.jdtime=starmap.jtime(&mytime);
+        nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
+        snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
+
+        starmap.siteLat = 33.589886; // casablanca, Morocco
+        starmap.siteLon = -7.603869; // Casablanca, Morocco
+    
+        // Setting up array for PNG
+        for (i=0;i<TFT_H;i++)
+        {
+            for (j=0;j<TFT_W;j++)
+            {
+                screen_ram[i][j]=0;
+            }
+        }
+
+        // Setting up the rectangle for Starmap class
+        br.left=0;
+        br.right=TFT_W;
+        br.top=0;
+        br.bottom=TFT_H;
+
+        //Clearing the image
+        Paint_Clear(BLACK);
+
+        starmap.set_col(1);
+        starmap.do_constellation_text = 0;
+        // Painting the sky
+        starmap.paintSky(mag, &br);
+
+        // Draw compass on screen
+        plot_char_10_12(NORTH_SYMBOL, 115, 18, NESW_COLOR);
+        plot_char_10_12(EAST_SYMBOL, 3, 125, NESW_COLOR);
+        plot_char_10_12(SOUTH_SYMBOL, 115, 234, NESW_COLOR);
+        plot_char_10_12(WEST_SYMBOL, 225, 125, NESW_COLOR);
+
+        // Draw lat and long on screen
+        lat = starmap.siteLat;
+        lon = starmap.siteLon;
+        disp_lat_lon(lat, lon, 38, 190, WHITE);
+        // Draw time on screen
+        disp_time(hr, min, 92, 205, WHITE);
+
+        //Create an image of the sky
+        write_png_image((char*)"sky.png");
+
+        // Displaying the image
+        LCD_1IN28_Display(BlackImage);
+
+        ts = time(NULL);
+        while (difftime(time(NULL), ts) < starmap_update_period) {
+            t = time(NULL);
+            tm = *localtime(&t);
+            hr = tm.tm_hour;
+            min = tm.tm_min;
+            if (min != old_min) {
+                old_min = min;
+                printf("updating the time\n");
+
+                disp_time(hr, min, 92, 205, WHITE);
+                // Displaying the image
+                LCD_1IN28_Display(BlackImage);
+            }
+
+            msleep(1100);
+        }
+
+        //printf("done!\n");
+
+    }
 
   // Freeing the screen
   free(BlackImage);
@@ -396,7 +425,7 @@ void write_png_image(char* filename)
         png_write_info(png, info); //write png image information to file
         png_write_image(png, row_pointers); //the thing we gathered here for
         png_write_end(png, NULL);
-        printf("Image was created successfully\nCheck %s file\n", filename);
+        //printf("Image was created successfully. Check %s file\n", filename);
     } while(0);
     //close file
     if (fp)
@@ -474,6 +503,28 @@ void disp_time(int hr, int min, int x, int y, int col) {
   sprintf(text_string, "%02d:%02d", hr, min);
 
   Paint_DrawString_EN(x, y, text_string,&Font16,  BLACK, col);
+}
+
+/* msleep(): Sleep for the requested number of milliseconds. */
+int msleep(long msec)
+{
+    struct timespec ts;
+    int res;
+
+    if (msec < 0)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    ts.tv_sec = msec / 1000;
+    ts.tv_nsec = (msec % 1000) * 1000000;
+
+    do {
+        res = nanosleep(&ts, &ts);
+    } while (res && errno == EINTR);
+
+    return res;
 }
 
 // ************ Yale star data *****************
