@@ -8,7 +8,7 @@ The project needs to be compiled to the correct platform.
 | *Twinkle, twinkle litte star ...* |
 
 ## Acknowledgments
-Based on starmap : [shabaz123's starmap](https://github.com/shabaz123/starmap). This project has been largely based on storybook with a few tweaks for my needs. All credit goes to them for making this awesome project.
+Based on starmap : [shabaz123's starmap](https://github.com/shabaz123/starmap). This project has been largely based on starmap with a few tweaks for my needs. All credit goes to them for making this awesome project.
 
 ## Building library from source
 
