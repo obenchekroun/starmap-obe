@@ -154,8 +154,8 @@ It will also generate a star chart PNG file (called sky.png) everytime the sky i
 | --- | --- | --- |
 | VCC  | 3V3 | Pin 1 |
 | GND  | GND | Pin 6 e.g  |
-| SDA  | GPIO 4 | Pin 7  |
-| SCL  | GPIO 27 | Pin 13  |
+| SDA  | GPIO 5 | Pin 29  |
+| SCL  | GPIO 6 | Pin 31  |
 | INT/SQW  | Reset Pin | pin 5 (RPi zero 2W) or pin 3 (RPi 4)  |
 
 | ![RPi Zero 2W Pin out diagram](/img/Zero2W3.jpg.webp) |
@@ -167,7 +167,7 @@ It will also generate a star chart PNG file (called sky.png) everytime the sky i
  * Add the following : 
  ```
  #dtoverlay for RTC DS3231 on specific pin
- dtoverlay=i2c-rtc-gpio,ds3231,i2c_gpio_sda=4,i2c_gpio_scl=27,wakeup-source
+ dtoverlay=i2c-rtc-gpio,ds3231,i2c_gpio_sda=5,i2c_gpio_scl=6,wakeup-source
  ```
 Make sure that the GPIO pin in the dtoverlay code corresponds to the pinning of the DS3231 to the RPi.
  * Then reboot `sudo reboot`
