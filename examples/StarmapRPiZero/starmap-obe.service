@@ -1,0 +1,17 @@
+[Unit]
+# https://www.shellhacks.com/systemd-service-file-example/
+Description=Starmap-obe
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/starmap-obe/examples/StarmapRPiZero/
+ExecStart=/home/pi/starmap-obe/examples/StarmapRPiZero/run.sh
+TimeoutStopSec=30
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -154,9 +154,8 @@ It will also generate a star chart PNG file (called sky.png) everytime the sky i
 | --- | --- | --- |
 | VCC  | 3V3 | Pin 1 |
 | GND  | GND | Pin 6 e.g  |
-| SDA  | GPIO 5 | Pin 29  |
-| SCL  | GPIO 6 | Pin 31  |
-| INT/SQW  | Reset Pin | pin 5 (RPi zero 2W) or pin 3 (RPi 4)  |
+| SDA  | GPIO 2 | Pin 3  |
+| SCL  | GPIO 3 | Pin 5  |
 
 | ![RPi Zero 2W Pin out diagram](/img/Zero2W3.jpg.webp) |
 |:--:| 
@@ -167,7 +166,7 @@ It will also generate a star chart PNG file (called sky.png) everytime the sky i
  * Add the following : 
  ```
  #dtoverlay for RTC DS3231 on specific pin
- dtoverlay=i2c-rtc-gpio,ds3231,i2c_gpio_sda=5,i2c_gpio_scl=6,wakeup-source
+ dtoverlay=i2c-rtc-gpio,ds3231,i2c_gpio_sda=2,i2c_gpio_scl=3
  ```
 Make sure that the GPIO pin in the dtoverlay code corresponds to the pinning of the DS3231 to the RPi.
  * Then reboot `sudo reboot`
@@ -223,6 +222,41 @@ sudo hwclock -r #get time from RTC clock
 date #see if time is correct of RPi
 sudo hwclock -w # write time to RTC
 ```
+
+#### running on startup
+The run on startup is provided by a systemd service, callin the script `run.sh`. By modifying command-line option inside the script, the call can be configured.
+
+#### Configuring the script `run.sh`
+
+- edit the `run.sh` script :
+``` bash
+nano run.sh
+```
+
+  - Once `run.sh`is configured, we have to make it executable :
+  ```bash
+  sudo chmod +x run.sh
+  ```
+  
+  - Lastly we just want to make this run at boot as a systemd service.
+``` bash
+sudo chmod +x run.sh
+sudo cp starmap-obe.service /etc/systemd/system
+sudo systemctl enable starmap-obe.service #to launch service on startup
+sudo systemctl daemon-reload
+sudo journalctl -u starmap-obe.service #to get journal
+```
+
+- The service can be started, stopped, restarted and checked :
+``` bash
+$ sudo systemctl start starmap-obe.service
+$ sudo systemctl stop starmap-obe.service
+$ sudo systemctl restart starmap-obe.service
+$ systemctl status starmap-obe.service
+```
+
+NB : The user created is named pi, if another user or project put in another folder, change the `Working Directory` section of the `starmap-obe.service`.
+
 
 ### Misc
 
