@@ -348,7 +348,7 @@ void loop() {
           Serial.print("error! unexpected satellite source.\n");
           break;
       }
-      if (sat_drawn) {  // don't want satellite icons to overlap the text
+      if (sat_drawn) {   // don't want satellite icons to overlap the text
         // overlay N, E, S, W characters onto the screen
         plot_char_10_12(NORTH_SYMBOL, 115, 18, NESW_COLOR);
         plot_char_10_12(EAST_SYMBOL, 3, 125, NESW_COLOR);

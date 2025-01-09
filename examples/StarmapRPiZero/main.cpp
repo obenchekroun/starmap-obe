@@ -12,15 +12,15 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
-#include <signal.h>     //signal()
+//#include <signal.h>     //signal()
 
 // Display libraries
 extern "C" {
   #include "../../lib/display/Config/DEV_Config.h"
-  #include "../../lib/display/Config/Debug.h"
+  //#include "../../lib/display/Config/Debug.h"
   #include "../../lib/display/LCD/LCD_1in28.h"
   #include "../../lib/display/GUI/GUI_Paint.h"
-  #include "../../lib/display/GUI/GUI_BMP.h"
+  //#include "../../lib/display/GUI/GUI_BMP.h"
 }
 
 // ******** defines ********
@@ -37,17 +37,47 @@ extern "C" {
 #define DEFAULT_LAT 33.589886
 #define DEFAULT_LON -7.603869
 //Some colors in RGB565 format for the display
-#define SM_COL_COORD_GRID   0x9492
-#define SM_COL_ECLIPTIC     0xf800
-#define SM_COL_CONSTEL      0xd6da
-#define SM_COL_STARDIM      0x65e9
-#define SM_COL_STARBRIGHT   0xa784
-#define SM_COL_STARTEXT     0xffff
-#define SM_COL_MOON_BRIGHT  0xff11
-#define SM_COL_MOON_DIM     0xff22
-#define SM_COL_MOON_DARK    0x01ff
-#define SM_COL_MOON_PHTEXT  0x00ff
-#define SM_COL_TEXT_GENERIC 0xc618
+// #define SM_COL_COORD_GRID   0x9492
+// #define SM_COL_ECLIPTIC     0xf800
+// #define SM_COL_CONSTEL      0x8c71
+// #define SM_COL_STARDIM      0x65e9
+// #define SM_COL_STARBRIGHT   0xa784
+// #define SM_COL_STARTEXT     0xffff
+// #define SM_COL_MOON_BRIGHT  0xff11
+// #define SM_COL_MOON_DIM     0xff22
+// #define SM_COL_MOON_DARK    0x01ff
+// #define SM_COL_MOON_PHTEXT  0x00ff
+// #define SM_COL_TEXT_GENERIC 0xc618
+
+#define SM_COL_COORD_GRID        0x4a49
+#define SM_COL_ECLIPTIC          0xab91
+#define SM_COL_CONSTEL           0x326b
+#define SM_COL_STARDIM           0xa520
+#define SM_COL_STARBRIGHT        0xffe0
+#define SM_COL_STARTEXT          0x033f //0x001f
+#define SM_COL_MOON_BRIGHT       0xffff
+#define SM_COL_MOON_DIM          0xe71c
+#define SM_COL_MOON_DARK         0xce79
+#define SM_COL_MOON_PHTEXT       0x0000
+#define SM_COL_TEXT_GENERIC      0xc618
+#define SM_COL_STARBRIGHT_TEXT   0x05df //0x001f
+#define SM_COL_ECLIPTIC_TEXT     0xab91
+#define SM_COL_CELEST_EQ_TEXT    0x4a49
+#define SM_COL_CONSTEL_TEXT      0x0030
+
+//10x12 font for N,E,S,W characters only
+const uint16_t font10_12[4][12] = {
+  { 0x0fff, 0x0fff, 0x0700, 0x03c0, 0x01e0, 0x0078, 0x003c, 0x000e, 0x0fff, 0x0fff },
+  { 0x0fff, 0x0fff, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c03, 0x0c03 },
+  { 0x038c, 0x07ce, 0x0ee7, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0e77, 0x073e, 0x031c },
+  { 0x0f80, 0x0ff8, 0x00ff, 0x0007, 0x007e, 0x007e, 0x0007, 0x00ff, 0x0ff8, 0x0f80 }
+};
+#define NORTH_SYMBOL 0
+#define EAST_SYMBOL 1
+#define SOUTH_SYMBOL 2
+#define WEST_SYMBOL 3
+#define NESW_COLOR 0xf800
+
 
 // ***** class based on Starmap ******
 class SM : public Starmap {
@@ -71,7 +101,9 @@ size_t nbytes; // to store number of bytes for snprintf
 
 // ******** function prototypes ************
 void write_png_image(char* filename);
-void LCD_1IN28_test(void);
+void plot_char_10_12(char c, int x, int y, int color);  // only supports N, E, S, W characters
+void disp_lat_lon(double lat, double lon, int x, int y, int col);
+void disp_time(int hr, int min, int x, int y, int col);
 
 // ******* plot_pixel function ******
 void SM::plot_pixel(uint16_t color, int x, int y) {
@@ -111,13 +143,13 @@ int main(void) {
   double mag=5;
   rect_s br;
   int i, j;
+  double lat, lon;
+  int hr, min, sec;  // used to store the displayed time
 
   tm_t mytime;
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
 
-  //starmap.siteLat = 47; // default; used for the out_ok.png
-  //starmap.siteLon = 122; // default; used for the out_ok.png
   starmap.siteLat = 33.589886; // casablanca, Morocco
   starmap.siteLon = -7.603869; // Casablanca, Morocco
 
@@ -131,26 +163,25 @@ int main(void) {
   starmap.col_moon_bright = SM_COL_MOON_BRIGHT;
   starmap.col_moon_dim = SM_COL_MOON_DIM;
   starmap.col_moon_dark = SM_COL_MOON_DARK;
-  starmap.col_moon_phtext = SM_COL_TEXT_GENERIC;
-  starmap.col_constel_text = SM_COL_TEXT_GENERIC;
-  starmap.col_bright_st_text = SM_COL_STARBRIGHT;
+  starmap.col_moon_phtext = SM_COL_MOON_PHTEXT;
+  starmap.col_constel_text = SM_COL_CONSTEL_TEXT;
+  starmap.col_bright_st_text = SM_COL_STARBRIGHT_TEXT;
+  starmap.col_ecliptic_text = SM_COL_ECLIPTIC_TEXT;
+  starmap.col_celest_eq_text = SM_COL_CELEST_EQ_TEXT;
   starmap.col_bayerf_text = SM_COL_TEXT_GENERIC;
-  starmap.col_celest_eq_text = SM_COL_TEXT_GENERIC;
-  starmap.col_ecliptic_text = SM_COL_ECLIPTIC;
-// Setting up the screen
+  // Setting up the screen
   printf("Setting up the screen!\n");
-  //LCD_1IN28_test();
   /* Module Init */
   if(DEV_ModuleInit() != 0){
         DEV_ModuleExit();
         exit(0);
   }
   /* LCD Init */
-  //printf("1.28inch LCD demo...\r\n");
   LCD_1IN28_Init(HORIZONTAL);
   LCD_1IN28_Clear(BLACK);
   LCD_SetBacklight(1023);
 
+  // Creating image Canvas
   UWORD *BlackImage;
   UDOUBLE Imagesize = LCD_1IN28_HEIGHT*LCD_1IN28_WIDTH*2;
   printf("Imagesize = %d\r\n", Imagesize);
@@ -158,22 +189,13 @@ int main(void) {
       printf("Failed to apply for black memory...\r\n");
       exit(0);
   }
-  // /*1.Create a new image cache named IMAGE_RGB and fill it with white*/
+  // Create a new image cache named IMAGE_RGB and fill it with white
   Paint_NewImage(BlackImage, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT, 0, BLACK, 16);
   Paint_Clear(BLACK);
   Paint_SetRotate(ROTATE_0);
-	// /* GUI */
   printf("Screen Setup\r\n");
-  sleep(3);
 
-  // default; used for the out_ok.png
-  // mytime.tm_sec=0;   // seconds 0-61?
-  // mytime.tm_min=18;  // minutes 0-59
-  // mytime.tm_hour=23;  // hour 0-23
-  // mytime.tm_mday=16;  // date 1-31
-  // mytime.tm_mon=7; // month 0-11
-  // mytime.tm_year=104; // years since 1900. Example: 104 means 1900+104 = year 2004
-
+  // Define time
   time_t t = time(NULL);
   struct tm tm = *localtime(&t);
   mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
@@ -183,13 +205,15 @@ int main(void) {
   mytime.tm_mon=tm.tm_mon; // month 0-11
   mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
   printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d\nLocation: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
-
+  hr = mytime.tm_hour;
+  min = mytime.tm_min;
+  sec = mytime.tm_sec;
 
   starmap.jdtime=starmap.jtime(&mytime);
   nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
   snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
     
-
+  // Setting up array for PNG
   for (i=0;i<TFT_H;i++)
   {
     for (j=0;j<TFT_W;j++)
@@ -198,6 +222,7 @@ int main(void) {
       }
   }
 
+  // Setting up rectabgle for Starmap class
   br.left=0;
   br.right=TFT_W;
   br.top=0;
@@ -205,9 +230,28 @@ int main(void) {
 
   starmap.set_col(1);
   starmap.do_constellation_text = 0;
+  // Painting the sky
   starmap.paintSky(mag, &br);
 
-  write_png_image((char*)"out.png");
+  // Draw compass on screen
+  plot_char_10_12(NORTH_SYMBOL, 115, 18, NESW_COLOR);
+  plot_char_10_12(EAST_SYMBOL, 3, 125, NESW_COLOR);
+  plot_char_10_12(SOUTH_SYMBOL, 115, 234, NESW_COLOR);
+  plot_char_10_12(WEST_SYMBOL, 225, 125, NESW_COLOR);
+
+  // Draw lat and long on screen
+  lat = starmap.siteLat;
+  lon = starmap.siteLon;
+  disp_lat_lon(lat, lon, 38, 190, WHITE);
+  // Draw time on screen
+  disp_time(hr, min, 92, 205, WHITE);
+
+
+  //Create an image of the sky
+  write_png_image((char*)"sky.png");
+
+  // Displaying the image
+  LCD_1IN28_Display(BlackImage);
 
 #ifdef GENERATE_BIN
   // process Yale
@@ -246,14 +290,12 @@ int main(void) {
 
 #endif // GENERATE_BIN
 
-    // Displaying the image
-    LCD_1IN28_Display(BlackImage);
-
-    free(BlackImage);
-    BlackImage = NULL;
-	DEV_ModuleExit();
-
   printf("done!\n");
+
+  // Freeing the screen
+  free(BlackImage);
+  BlackImage = NULL;
+  DEV_ModuleExit();
 
   return(0);
 }
@@ -375,71 +417,64 @@ void write_png_image(char* filename)
     }
 }
 
-void LCD_1IN28_test()
-{
-    // Exception handling:ctrl + c
-    signal(SIGINT, Handler_1IN28_LCD);
+// plot_char_10_12 only supports N, E, S, W characters
+void plot_char_10_12(char c, int x, int y, int color) {
+  int i, j;
+  // check that the character is in the font
+  // only 0-3 are valid (N, E, S, W)
+  if (c > 3 || c < 0) {
+    return;
+  }
 
-    /* Module Init */
-	if(DEV_ModuleInit() != 0){
-        DEV_ModuleExit();
-        exit(0);
+  for (i = 0; i < 10; i++) {
+    for (j = 0; j < 12; j++) {
+      if (font10_12[c][i] & (1 << j)) {
+        Paint_DrawPoint(x+i, y-j, color, DOT_PIXEL_1X1,DOT_FILL_AROUND);
+      } else {
+        Paint_DrawPoint(x+i, y-j, BLACK, DOT_PIXEL_1X1,DOT_FILL_AROUND);
+      }
     }
-
-    /* LCD Init */
-	printf("1.28inch LCD demo...\r\n");
-	LCD_1IN28_Init(HORIZONTAL);
-	LCD_1IN28_Clear(BLACK);
-	LCD_SetBacklight(1023);
-
-    UWORD *BlackImage;
-    UDOUBLE Imagesize = LCD_1IN28_HEIGHT*LCD_1IN28_WIDTH*2;
-    printf("Imagesize = %d\r\n", Imagesize);
-    if((BlackImage = (UWORD *)malloc(Imagesize)) == NULL) {
-        printf("Failed to apply for black memory...\r\n");
-        exit(0);
-    }
-    // /*1.Create a new image cache named IMAGE_RGB and fill it with white*/
-    Paint_NewImage(BlackImage, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT, 0, BLACK, 16);
-    Paint_Clear(BLACK);
-	Paint_SetRotate(ROTATE_0);
-	// /* GUI */
-    printf("drawing...\r\n");
-    // /*2.Drawing on the image*/
-	Paint_DrawCircle(120,120, 118, BLUE ,DOT_PIXEL_2X2,DRAW_FILL_EMPTY);
-
-    Paint_DrawLine  (120, 1, 120, 12,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
-    Paint_DrawLine  (120, 228, 120, 240,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
-    Paint_DrawLine  (1, 120, 12, 120,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
-    Paint_DrawLine  (228, 120, 240, 120,GREEN ,DOT_PIXEL_4X4,LINE_STYLE_SOLID);
-
-    Paint_SetPixel(50, 50, GREEN);
-
-    //Paint_DrawImage(gImage_70X70, 85, 25, 70, 70);
-    Paint_DrawString_EN(123, 123, "Starmap",&Font16,  BLACK, GREEN);
-
-	Paint_DrawLine  (120, 120, 70, 70,YELLOW ,DOT_PIXEL_3X3,LINE_STYLE_SOLID);
-	Paint_DrawLine  (120, 120, 176, 64,BLUE ,DOT_PIXEL_3X3,LINE_STYLE_SOLID);
-	Paint_DrawLine  (120, 120, 120, 210,RED ,DOT_PIXEL_2X2,LINE_STYLE_SOLID);
-
-	// /*3.Refresh the picture in RAM to LCD*/
-    LCD_1IN28_Display(BlackImage);
-    DEV_Delay_ms(4000);
-
-    // /* show bmp */
-	printf("show bmp\r\n");
-	GUI_ReadBmp("./pic/LCD_1inch28_1.bmp");
-
-    LCD_1IN28_Display(BlackImage);
-    DEV_Delay_ms(2000);
-
-
-    // /* Module Exit */
-    free(BlackImage);
-    BlackImage = NULL;
-	DEV_ModuleExit();
+  }
 }
 
+//displaying latitude and longitude
+void disp_lat_lon(double lat, double lon, int x, int y, int col) {
+  char text_string[32];
+  char neg_lat = 0;
+  char neg_lon = 0;
+
+  if (lat < 0) {
+    neg_lat = 1;
+    lat = 0 - lat;
+  }
+  if (lon < 0) {
+    neg_lon = 1;
+    lon = 0 - lon;
+  }
+  // build text string; there must be an easier way to do this!
+  if (neg_lat) {
+    if (neg_lon) {
+      sprintf(text_string, "LAT:-%02d.%03dN LON:-%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    } else {
+      sprintf(text_string, "LAT:-%02d.%03dN LON:%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    }
+  } else {
+    if (neg_lon) {
+      sprintf(text_string, "LAT:%02d.%03dN LON:-%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    } else {
+      sprintf(text_string, "LAT:%02d.%03dN LON:%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    }
+  }
+
+  Paint_DrawString_EN(x, y, text_string,&Font12,  BLACK, col);
+}
+//displaying latitude and longitude
+void disp_time(int hr, int min, int x, int y, int col) {
+  char text_string[24];
+  sprintf(text_string, "%02d:%02d", hr, min);
+
+  Paint_DrawString_EN(x, y, text_string,&Font16,  BLACK, col);
+}
 
 // ************ Yale star data *****************
 
