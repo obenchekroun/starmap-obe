@@ -1,8 +1,8 @@
 [Unit]
 # https://www.shellhacks.com/systemd-service-file-example/
 Description=Starmap-obe
-After=network-online.target
-Wants=network-online.target
+After=systemd-time-wait-sync.service
+Wants=systemd-time-wait-sync.service
 
 [Service]
 Type=simple
