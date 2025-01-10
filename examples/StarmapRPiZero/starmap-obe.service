@@ -10,6 +10,8 @@ WorkingDirectory=/home/pi/starmap-obe/examples/StarmapRPiZero/
 ExecStart=/home/pi/starmap-obe/examples/StarmapRPiZero/run.sh
 TimeoutStopSec=30
 KillSignal=SIGINT
+User=root
+Group=root
 Restart=on-failure
 RestartSec=15
 

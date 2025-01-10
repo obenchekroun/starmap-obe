@@ -10,6 +10,13 @@ The project needs to be compiled to the correct platform.
 ## Acknowledgments
 Based on starmap : [shabaz123's starmap](https://github.com/shabaz123/starmap). This project has been largely based on starmap with a few tweaks for my needs. All credit goes to them for making this awesome project.
 
+## get the project
+
+``` bash
+git clone https://github.com/obenchekroun/starmap-obe
+cd starmap-obe
+```
+
 ## Building library from source
 
 If you want to build the library from source, you can clone the code into a folder onto your Linux machine, then go into the starmap folder, and type:
@@ -115,6 +122,10 @@ make
 ```
 
 By doing that, a `starmap`  executable will be built in the build folder. 
+
+You can then execute `./starmap`.
+
+If you get the following error `Debug : gpiochip0 Export Failed`, it means there is a permission problem. either execute as `sudo`, `sudo ./starmap`, or execute `gpio export 0 out` which will export GPIO 0 for output use,
 
 ### Usage
 You can run the starmap executable by typing:
