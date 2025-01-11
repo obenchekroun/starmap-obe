@@ -125,7 +125,7 @@ By doing that, a `starmap`  executable will be built in the build folder.
 
 You can then execute `./starmap`.
 
-If you get the following error `Debug : gpiochip0 Export Failed`, it means there is a permission problem. either execute as `sudo`, `sudo ./starmap`, or execute `gpio export 0 out` which will export GPIO 0 for output use,
+If you get the following error `Debug : gpiochip0 Export Failed`, it means there is a permission problem. either execute as `sudo`, `sudo ./starmap`.
 
 ### Usage
 You can run the starmap executable by typing:
