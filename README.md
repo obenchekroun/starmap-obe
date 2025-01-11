@@ -310,6 +310,75 @@ sudo make -j 8
 sudo ./main 1.28
 ```
 
+## Starmap on RP2040 board
+
+### Required hardware
+- RP2040 or RP2050 board
+- Pimoroni Display Pack 2.0
+- DS3231 RTC module. Adafruit has a compact one [link](https://www.adafruit.com/product/3013), but any can do. *NB: PiSugar has an RTC embedded*.
+
+###  Dependencies
+The firmware can be built on any linux machine. You need to set up the pico-SDK :
+
+#### Setting up pico SDK
+```
+sudo apt update
+sudo apt upgrade
+git clone https://github.com/raspberrypi/pico-sdk
+cd pico-sdk
+git submodule update --init
+export PICO_SDK_PATH=`pwd`
+cd ../
+```
+
+You should should ensure your `PICO_SDK_PATH` environment variable is set by `~/.profile`
+
+``` bash
+nano ~/.profile
+```
+ and add `export PICO_SDK_PATH="/path/to/pico-sdk"` at the end.
+ 
+ #### Correcting linker Flash size definition (in case an error of Flash overflow occurs)
+ 
+ As of May 17th 2024, linker scripts are not generated from templates at build time, and do not allow for substitution of board parameters. They are hardcoded in `pico-sdk/src/rp2_common/pico_standard_link/memmap_default.ld`. We need to change that manually for the firmware to compile. See this github issue [#398](https://github.com/raspberrypi/pico-sdk/issues/398), this one [#8680](https://github.com/micropython/micropython/issues/8680) and this [thread](https://forums.raspberrypi.com/viewtopic.php?t=311163) on Raspi Forum.
+To do so, we edit the `pico-sdk/src/rp2_common/pico_standard_link/memmap_default.ld` and change the FLASH size to 4MB (`4194304` B or `4096k`).
+
+```bash
+cp memmap_default.ld memmap_default.ld~
+nano memmap_default.ld
+```
+ and change the `MEMORY {  }` section to :
+
+``` bash
+MEMORY
+{
+    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 4096k
+    RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 256k
+    SCRATCH_X(rwx) : ORIGIN = 0x20040000, LENGTH = 4k
+    SCRATCH_Y(rwx) : ORIGIN = 0x20041000, LENGTH = 4k
+}
+```
+*NB: This is the file used for linker for rp2040 boards. For other boards, seek for the corresponding files each corresponding `ports` folder* 
+ 
+### Building
+List of boards can be find here : `pico-sdk/src/boards/include/boards/`
+
+```
+cd starmap-obe/examples/StarmapPico
+mkdir -p build
+cd build
+cmake -DPICO_BOARD=waveshare_rp2040_plus_4mb .. # PICO_BOARD definition set up the chosen board
+make
+```
+
+
+
+By doing that, a `starmap`  executable will be built in the build folder. 
+
+You can then execute `./starmap`.
+
+If you get the following error `Debug : gpiochip0 Export Failed`, it means there is a permission problem. either execute as `sudo`, `sudo ./starmap`.
+
 
 ## Acknowledgement
 

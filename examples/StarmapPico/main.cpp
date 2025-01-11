@@ -4,11 +4,12 @@
 
 #include <stdio.h>
 #include "../../src/Starmap.h"
-#include <png.h>
+//#include <png.h>
 
-#include <stdlib.h>
+#include "pico/stdlib.h"
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 
 
 // defines
@@ -33,10 +34,11 @@ extern const uint16_t constellation_lines_array[3882]; // join-the-dots lines
 extern const uint16_t constellation_bound_array[2631];
 const char yale_end_string[33]="YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"; // must be 32 Y characters
 SM starmap;
-char screen_ram[TFT_H][TFT_W];
+//char screen_ram[TFT_H][TFT_W];
+size_t nbytes; // to store number of bytes for snprintf
 
-// function prototypes
-void write_png_image(char* filename);
+// // function prototypes
+// //void write_png_image(char* filename);
 
 // plot_pixel
 void SM::plot_pixel(uint16_t color, int x, int y) {
@@ -44,15 +46,15 @@ void SM::plot_pixel(uint16_t color, int x, int y) {
     if (x<0) return;
     if (y>TFT_H) return;
     if (y<0) return;
-    if (color==0) {
-        screen_ram[y][x] = 0;
-    } else if (color <= 0x00ff) {
-        screen_ram[y][x] = 1;
-    } else if (color <= 0xff00) {
-        screen_ram[y][x] = 2;
-    } else {
-        screen_ram[y][x] = 3;
-    }
+    // if (color==0) {
+    //     screen_ram[y][x] = 0;
+    // } else if (color <= 0x00ff) {
+    //     screen_ram[y][x] = 1;
+    // } else if (color <= 0xff00) {
+    //     screen_ram[y][x] = 2;
+    // } else {
+    //     screen_ram[y][x] = 3;
+    // }
 }
 
 int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
@@ -64,18 +66,29 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 
 
 // ************* main code *****************
-int
-main(void) {
+int main() {
+    stdio_init_all(); // Initialize standard IO
+    int k = 10;
+    while (k >= 0) {
+        printf("Testing in %d sec...\n", k);
+        k++;
+        sleep_ms(1000);
+    }
+
   double mag=5;
   rect_s br;
   int i, j;
 
   tm_t mytime;
-  sprintf(starmap.log2ram_buf, "Hello\n");
+  nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
+  snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
 
-  starmap.siteLat = 47;
-  starmap.siteLon = 122;
+  //starmap.siteLat = 47; // default; used for the out_ok.png
+  //starmap.siteLon = 122; // default; used for the out_ok.png
+  starmap.siteLat = 33.589886; // casablanca, Morocco
+  starmap.siteLon = -7.603869; // Casablanca, Morocco
 
+  // default; used for the out_ok.png
   mytime.tm_sec=0;   // seconds 0-61?
   mytime.tm_min=18;  // minutes 0-59
   mytime.tm_hour=23;  // hour 0-23
@@ -83,17 +96,29 @@ main(void) {
   mytime.tm_mon=7; // month 0-11
   mytime.tm_year=104; // years since 1900. Example: 104 means 1900+104 = year 2004
 
-  starmap.jdtime=starmap.jtime(&mytime);
-  sprintf(starmap.log2ram_buf, "time=%f.\n", starmap.jdtime);
-    
+  // time_t t = time(NULL);
+  // struct tm tm = *localtime(&t);
+  // mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
+  // mytime.tm_min=tm.tm_min;  // minutes 0-59
+  // mytime.tm_hour=tm.tm_hour;  // hour 0-23
+  // mytime.tm_mday=tm.tm_mday;  // date 1-31
+  // mytime.tm_mon=tm.tm_mon; // month 0-11
+  // mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
+  printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d\nLocation: LAT=%f and LONG=%f\n", mytime.tm_year + 1900, mytime.tm_mon + 1, mytime.tm_mday, mytime.tm_hour, mytime.tm_min, mytime.tm_sec, starmap.siteLat, starmap.siteLon);
 
-  for (i=0;i<TFT_H;i++)
-  {
-    for (j=0;j<TFT_W;j++)
-    {
-      screen_ram[i][j]=0;
-      }
-  }
+
+  starmap.jdtime=starmap.jtime(&mytime);
+  nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
+  snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
+
+
+  // for (i=0;i<TFT_H;i++)
+  // {
+  //   for (j=0;j<TFT_W;j++)
+  //   {
+  //     screen_ram[i][j]=0;
+  //     }
+  // }
 
   br.left=0;
   br.right=TFT_W;
@@ -104,44 +129,7 @@ main(void) {
   starmap.do_constellation_text = 0;
   starmap.paintSky(mag, &br);
 
-   write_png_image((char*)"out.png");
-
-#ifdef GENERATE_BIN
-  // process Yale
-  // create a file "starmap_rom.bin" containing all the arrays
-    FILE *f = fopen("starmap_rom_v01.bin", "wb");
-    // write the id_string
-    fwrite(id_string, 1, 12, f);
-    // for future use, 8k spare block
-    for (i = 12; i < 8192; i++) {
-        fputc(0x00, f);
-    }
-    fwrite(constellation_array, 1, 4320, f);
-    // padding
-    for (i = 0; i < 0x03400 - 0x02000 - 4320; i++) {
-        fputc(0x00, f);
-    }
-    fwrite(constellation_lines_array, 1, 3882*2, f);
-    // padding
-    for (i = 0; i < 0x05400 - 0x03400 - 3882*2; i++) {
-        fputc(0x00, f);
-    }
-    fwrite(constellation_bound_array, 1, 2631*2, f);
-    // padding
-    for (i = 0; i < 0x06c00 - 0x05400 - 2631*2; i++) {
-        fputc(0x00, f);
-    }
-    // for future use, 8k spare block
-    for (i = 0; i < 8192; i++) {
-        fputc(0x00, f);
-    }
-    fwrite(yale_array, 1, 112217, f);
-    // end identifer
-    fwrite(yale_end_string, 1, 32, f);
-    // close file
-    fclose(f);
-
-#endif // GENERATE_BIN
+   //write_png_image((char*)"sky.png");
 
   printf("done!\n");
   return(0);
@@ -149,120 +137,120 @@ main(void) {
 
 
 // ************** other functions *********************
-void write_png_image(char* filename)
-{
-    png_byte** row_pointers; // pointer to image bytes
-    FILE* fp; // file for image
+// void write_png_image(char* filename)
+// {
+//     png_byte** row_pointers; // pointer to image bytes
+//     FILE* fp; // file for image
 
-    do // one time do-while to properly free memory and close file after error
-    {
-        row_pointers = (png_byte**)malloc(sizeof(png_byte*) * TFT_H);
-        if (!row_pointers)
-        {
-            printf("Allocation failed\n");
-            break;
-        }
-        for (int i = 0; i < TFT_H; i++)
-        {
-            row_pointers[i] = (png_byte*)malloc(4*TFT_W);
-            if (!row_pointers[i])
-            {
-                printf("Allocation failed\n");
-                break;
-            }
-        }
-        // fill image with color
-        int xinc;
-        for (int y = 0; y < TFT_H; y++)
-        {
-            xinc=0;
-            for (int x = 0; x < TFT_W*4; x+=4)
-            {
-                if (screen_ram[y][xinc] == 0) {
-                    row_pointers[y][x] = 0;     //r
-                    row_pointers[y][x + 1] = 0; //g
-                    row_pointers[y][x + 2] = 0; //b
-                } else if (screen_ram[y][xinc] == 1) {
-                    row_pointers[y][x] = 255;     //r
-                    row_pointers[y][x + 1] = 0; //g
-                    row_pointers[y][x + 2] = 0; //b
-                } else if (screen_ram[y][xinc] == 2) {
-                    row_pointers[y][x] = 0;     //r
-                    row_pointers[y][x + 1] = 255; //g
-                    row_pointers[y][x + 2] = 0; //b
-                } else if (screen_ram[y][xinc] == 3) {
-                    row_pointers[y][x] = 0;     //r
-                    row_pointers[y][x + 1] = 0; //g
-                    row_pointers[y][x + 2] = 255; //b
-                } else {
-                    row_pointers[y][x] = 255;     //r
-                    row_pointers[y][x + 1] = 255; //g
-                    row_pointers[y][x + 2] = 255; //b
-                }
+//     do // one time do-while to properly free memory and close file after error
+//     {
+//         row_pointers = (png_byte**)malloc(sizeof(png_byte*) * TFT_H);
+//         if (!row_pointers)
+//         {
+//             printf("Allocation failed\n");
+//             break;
+//         }
+//         for (int i = 0; i < TFT_H; i++)
+//         {
+//             row_pointers[i] = (png_byte*)malloc(4*TFT_W);
+//             if (!row_pointers[i])
+//             {
+//                 printf("Allocation failed\n");
+//                 break;
+//             }
+//         }
+//         // fill image with color
+//         int xinc;
+//         for (int y = 0; y < TFT_H; y++)
+//         {
+//             xinc=0;
+//             for (int x = 0; x < TFT_W*4; x+=4)
+//             {
+//                 if (screen_ram[y][xinc] == 0) {
+//                     row_pointers[y][x] = 0;     //r
+//                     row_pointers[y][x + 1] = 0; //g
+//                     row_pointers[y][x + 2] = 0; //b
+//                 } else if (screen_ram[y][xinc] == 1) {
+//                     row_pointers[y][x] = 255;     //r
+//                     row_pointers[y][x + 1] = 0; //g
+//                     row_pointers[y][x + 2] = 0; //b
+//                 } else if (screen_ram[y][xinc] == 2) {
+//                     row_pointers[y][x] = 0;     //r
+//                     row_pointers[y][x + 1] = 255; //g
+//                     row_pointers[y][x + 2] = 0; //b
+//                 } else if (screen_ram[y][xinc] == 3) {
+//                     row_pointers[y][x] = 0;     //r
+//                     row_pointers[y][x + 1] = 0; //g
+//                     row_pointers[y][x + 2] = 255; //b
+//                 } else {
+//                     row_pointers[y][x] = 255;     //r
+//                     row_pointers[y][x + 1] = 255; //g
+//                     row_pointers[y][x + 2] = 255; //b
+//                 }
 
-                row_pointers[y][x + 3] = IMAGE_ALPHA_CHANNEL; //a
-                xinc++;
-            }
-        }
-        //printf("%d %d %d %d\n", row_pointers[0][0], row_pointers[0][1], row_pointers[0][2], row_pointers[0][3]);
+//                 row_pointers[y][x + 3] = IMAGE_ALPHA_CHANNEL; //a
+//                 xinc++;
+//             }
+//         }
+//         //printf("%d %d %d %d\n", row_pointers[0][0], row_pointers[0][1], row_pointers[0][2], row_pointers[0][3]);
 
-        fp = fopen(filename, "wb"); //create file for output
-        if (!fp)
-        {
-            printf("Open file failed\n");
-            break;
-        }
-        png_struct* png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //create structure for write
-        if (!png)
-        {
-            printf("Create write struct failed\n");
-            break;
-        }
-        png_infop info = png_create_info_struct(png); // create info structure
-        if (!info)
-        {
-            printf("Create info struct failed\n");
-            break;
-        }
-        if (setjmp(png_jmpbuf(png))) // this is some routine for errors?
-        {
-            printf("setjmp failed\n");
-        }
-        png_init_io(png, fp); //initialize file output
-        png_set_IHDR( //set image properties
-            png, //pointer to png_struct
-            info, //pointer to info_struct
-            TFT_W, //image width
-            TFT_H, //image height
-            8, //color depth
-            PNG_COLOR_TYPE_RGBA, //color type
-            PNG_INTERLACE_NONE, //interlace type
-            PNG_COMPRESSION_TYPE_DEFAULT, //compression type
-            PNG_FILTER_TYPE_DEFAULT //filter type
-            );
-        png_write_info(png, info); //write png image information to file
-        png_write_image(png, row_pointers); //the thing we gathered here for
-        png_write_end(png, NULL);
-        printf("Image was created successfully\nCheck %s file\n", filename);
-    } while(0);
-    //close file
-    if (fp)
-    {
-        fclose(fp);
-    }
-    //free allocated memory
-    for (int i = 0; i < TFT_H; i++)
-    {
-        if (row_pointers[i])
-        {
-            free(row_pointers[i]);
-        }
-    }
-    if (row_pointers)
-    {
-        free(row_pointers);
-    }
-}
+//         fp = fopen(filename, "wb"); //create file for output
+//         if (!fp)
+//         {
+//             printf("Open file failed\n");
+//             break;
+//         }
+//         png_struct* png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //create structure for write
+//         if (!png)
+//         {
+//             printf("Create write struct failed\n");
+//             break;
+//         }
+//         png_infop info = png_create_info_struct(png); // create info structure
+//         if (!info)
+//         {
+//             printf("Create info struct failed\n");
+//             break;
+//         }
+//         if (setjmp(png_jmpbuf(png))) // this is some routine for errors?
+//         {
+//             printf("setjmp failed\n");
+//         }
+//         png_init_io(png, fp); //initialize file output
+//         png_set_IHDR( //set image properties
+//             png, //pointer to png_struct
+//             info, //pointer to info_struct
+//             TFT_W, //image width
+//             TFT_H, //image height
+//             8, //color depth
+//             PNG_COLOR_TYPE_RGBA, //color type
+//             PNG_INTERLACE_NONE, //interlace type
+//             PNG_COMPRESSION_TYPE_DEFAULT, //compression type
+//             PNG_FILTER_TYPE_DEFAULT //filter type
+//             );
+//         png_write_info(png, info); //write png image information to file
+//         png_write_image(png, row_pointers); //the thing we gathered here for
+//         png_write_end(png, NULL);
+//         printf("Image was created successfully\nCheck %s file\n", filename);
+//     } while(0);
+//     //close file
+//     if (fp)
+//     {
+//         fclose(fp);
+//     }
+//     //free allocated memory
+//     for (int i = 0; i < TFT_H; i++)
+//     {
+//         if (row_pointers[i])
+//         {
+//             free(row_pointers[i]);
+//         }
+//     }
+//     if (row_pointers)
+//     {
+//         free(row_pointers);
+//     }
+// }
 
 
 
@@ -288,7 +276,7 @@ void write_png_image(char* filename)
 // smex[0]<32? --> add 96 to smex[0], and use the greek alphabet
 //                 otherwise use conventional alphabet
 
-const unsigned char yale_array[]=
+const unsigned char yale_array [] =
 {
     0x5f,0x9c,0x7c,0xa9,0x95,0xb0,0x29,0x01,0x31,0x00,0xc6,0xf1,0xbb,0x02,0x52,0x69,
     0x67,0x69,0x6c,0x6b,0x65,0x6e,0x74,0x00,0x1e,0x98,0x47,0x1b,0x92,0xb0,0x33,0x01,
