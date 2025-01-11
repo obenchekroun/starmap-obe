@@ -14,7 +14,7 @@
 #ifndef __LCD_1IN28_H
 #define __LCD_1IN28_H	
 	
-#include "../Config/DEV_Config.h"
+#include "DEV_Config.h"
 #include <stdint.h>
 
 #include <stdlib.h>		//itoa()

@@ -17,10 +17,10 @@
 
 // Display libraries
 extern "C" {
-  #include "../../lib/display/Config/DEV_Config.h"
+  #include "DEV_Config.h"
   //#include "../../lib/display/Config/Debug.h"
-  #include "../../lib/display/LCD/LCD_1in28.h"
-  #include "../../lib/display/GUI/GUI_Paint.h"
+  #include "LCD_1in28.h"
+  #include "GUI_Paint.h"
   //#include "../../lib/display/GUI/GUI_BMP.h"
 }
 
@@ -193,7 +193,7 @@ int main(void) {
     // Create a new image cache named IMAGE_RGB and fill it with white
     Paint_NewImage(BlackImage, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT, 0, BLACK, 16);
     Paint_Clear(BLACK);
-    Paint_SetRotate(ROTATE_0);
+    Paint_SetRotate(ROTATE_180);
 
 #ifdef GENERATE_BIN
   // process Yale
