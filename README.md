@@ -383,6 +383,13 @@ make
 
 By doing that, a `starmap.uf2`  firmware is generated that can be flashed on the microcontroller.
 
+### Usage
+Flashing the firmware will get you running. 
+The code makes use of the 4 buttons on the Pimoroni pico display pack :
+- `X` : switch to manual mode (with manula written on the screen and the led turning red), which allows you to get forward and backward in time resp. with the buttons `B` and `A`
+  - in this mode, the screen won't be updated unless a button is pressed
+- `Y` : go back to auto mode, with the screen updating the datetime every minute and the map once every five minutes
+
 ### Serial console
 ``` bash
 ls /dev/tty.*
