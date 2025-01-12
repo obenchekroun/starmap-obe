@@ -65,6 +65,7 @@ using namespace pimoroni;
 #define GOLD_COLOR               0xfda4
 #define WHITE_COLOR              0xffff
 #define LILAC_COLOR              0xbcbc
+#define RED_COLOR                0xf800
 
 //10x12 font for N,E,S,W characters only
 const uint16_t font10_12[4][12] = {
@@ -84,7 +85,7 @@ const uint16_t font10_12[4][12] = {
 #define RTC_SCL_PIN 1
 #define RTC_INT_PIN 18
 const char * days[7] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
-const char * months[12] = {"Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"};
+const char * months[12] = {"Janv", "Févr", "Mars", "Avri", "Mai", "Juin", "Juil", "Aout", "Sept", "Octo", "Nove", "Dece"};
 
 // ***** class based on Starmap ******
 class SM : public Starmap {
@@ -130,7 +131,9 @@ void disp_lat_lon(double lat, double lon, int x, int y, int color);
 void disp_time(int hr, int min, int x, int y, int color);
 void disp_date(int year, int month, int day, int x, int y, int color);
 void draw_NESW (char c[], int x, int y, int color);
+void draw_manual_mode(int x, int y, int color);
 void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm);
+const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
 // int msleep(long msec); // already defined in pico-sdk
 
@@ -179,7 +182,9 @@ int main() {
   time_t ts; // timestamp to check if period delay of update has passed
   struct tm tm; // structure for the time
   int dotw; //day of the week
-  int loop;
+  int loop; // 1 for loop of time updating running, 0 to update image
+  int mode; //1 for auto mode, 0 for manual mode
+  int to_update;
 
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
@@ -268,83 +273,112 @@ int main() {
   graphics.set_pen(BLACK);
   graphics.clear();
   st7789.update(&graphics);
+  led.set_rgb(200, 200, 200);
   printf("Screen Setup\r\n");
   //sleep_ms(10000);
 
+  mode = 1 ;
+  to_update = 1;
+
   while(FOREVER){
-      // Get time
-      rtc_get_datetime(&t_init);
-      datetime_to_tm_obe(&t_init, &tm);
-      t = mktime(&tm);
-      hr = tm.tm_hour;
-      min = tm.tm_min;
+      // switching mode with buttons
+      if(button_x.raw()) {
+         mode = 0;
+         to_update = 1;
+         led.set_rgb(255, 0, 0);
+      }
 
-      printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
+      if(button_y.raw()) {
+          mode = 1;
+          to_update = 1;
+          led.set_rgb(200, 200, 200);
+      }
 
-      mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
-      mytime.tm_min=tm.tm_min;  // minutes 0-59
-      mytime.tm_hour=tm.tm_hour;  // hour 0-23
-      mytime.tm_mday=tm.tm_mday;  // date 1-31
-      mytime.tm_mon=tm.tm_mon; // month 0-11
-      mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
+      if(button_a.raw() && !mode) {
+          tm.tm_hour = tm.tm_hour-2;
+          mktime(&tm);
+          to_update = 1;
+      }
+      if(button_b.raw() && !mode) {
+          tm.tm_hour = tm.tm_hour+2;
+          mktime(&tm);
+          to_update = 1;
+      }
 
-      // time_t t = time(NULL);
-      // struct tm tm = *localtime(&t);
-      // printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", t.year, t.month, t.day, t.hour, t.min, t.sec, starmap.siteLat, starmap.siteLon);
-      // mytime.tm_sec=t.sec;   // seconds 0-61?
-      // mytime.tm_min=t.min;  // minutes 0-59
-      // mytime.tm_hour=t.hour;  // hour 0-23
-      // mytime.tm_mday=t.day;  // date 1-31
-      // mytime.tm_mon=t.month-1; // month 0-11
-      // mytime.tm_year=t.year-1900; // years since 1900. Example: 104 means 1900+104 = year 2004
+      if (to_update) {
+          // get time
+          if (mode) {
+              rtc_get_datetime(&t_init);
+              datetime_to_tm_obe(&t_init, &tm);
+              t = mktime(&tm);
+          }
+          hr = tm.tm_hour;
+          min = tm.tm_min;
 
-      starmap.jdtime=starmap.jtime(&mytime);
-      nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
-      snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
+          printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
 
-      starmap.siteLat = 33.589886; // casablanca, Morocco
-      starmap.siteLon = -7.603869; // Casablanca, Morocco
+          mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
+          mytime.tm_min=tm.tm_min;  // minutes 0-59
+          mytime.tm_hour=tm.tm_hour;  // hour 0-23
+          mytime.tm_mday=tm.tm_mday;  // date 1-31
+          mytime.tm_mon=tm.tm_mon; // month 0-11
+          mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
 
-      // Setting up the rectangle for Starmap class
-      br.left=0;
-      br.right=TFT_W;
-      br.top=0;
-      br.bottom=TFT_H;
+          starmap.jdtime=starmap.jtime(&mytime);
+          nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
+          snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
 
-      //Clearing the image
-      graphics.set_pen(BLACK);
-      graphics.clear();
-      st7789.update(&graphics);
+          starmap.siteLat = 33.589886; // casablanca, Morocco
+          starmap.siteLon = -7.603869; // Casablanca, Morocco
 
-      starmap.set_col(1);
-      starmap.do_constellation_text = 0;
-      // Painting the sky
-      starmap.paintSky(mag, &br);
+          // Setting up the rectangle for Starmap class
+          br.left=0;
+          br.right=TFT_W;
+          br.top=0;
+          br.bottom=TFT_H;
 
-      // Draw compass on screen
-      draw_NESW((char*)"N", 115,30,NESW_COLOR);
-      draw_NESW((char*)"E", 10,155,NESW_COLOR);
-      draw_NESW((char*)"S", 115,270,NESW_COLOR);
-      draw_NESW((char*)"W", 224,155,NESW_COLOR);
+          //Clearing the image
+          graphics.set_pen(BLACK);
+          graphics.clear();
+          st7789.update(&graphics);
 
-      // Draw lat and long on screen
-      lat = starmap.siteLat;
-      lon = starmap.siteLon;
-      disp_lat_lon(lat, lon, 5, 10, LILAC_COLOR);
-      // Draw time on screen
-      disp_time(hr, min, 170, 290, WHITE_COLOR);
-      // Draw date
-      disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, 5, 303, GOLD_COLOR);
+          starmap.set_col(1);
+          starmap.do_constellation_text = 0;
+          // Painting the sky
+          starmap.paintSky(mag, &br);
 
-      // update the screen
-      st7789.update(&graphics);
+          // Draw compass on screen
+          draw_NESW((char*)"N", 115,30,NESW_COLOR);
+          draw_NESW((char*)"E", 10,155,NESW_COLOR);
+          draw_NESW((char*)"S", 115,270,NESW_COLOR);
+          draw_NESW((char*)"W", 224,155,NESW_COLOR);
 
-      rtc_get_datetime(&t_init);
-      datetime_to_tm_obe(&t_init, &tm);
-      ts = mktime(&tm);
+          // Draw lat and long on screen
+          lat = starmap.siteLat;
+          lon = starmap.siteLon;
+          disp_lat_lon(lat, lon, 5, 10, LILAC_COLOR);
+          // Draw time on screen
+          disp_time(hr, min, 170, 270, WHITE_COLOR);
+          // Draw date
+          disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, 5, 303, GOLD_COLOR);
+          // draw MANUAL
+          if (!mode) {
+              draw_manual_mode(10,280,RED_COLOR);
+          }
+
+          // update the screen
+          st7789.update(&graphics);
+
+          if (mode) {
+              rtc_get_datetime(&t_init);
+              datetime_to_tm_obe(&t_init, &tm);
+              ts = mktime(&tm);
+          }
+      }
 
       loop = 1;
-      while (loop) {
+      to_update = 0;
+      while (loop && mode) {
           rtc_get_datetime(&t_init);
           datetime_to_tm_obe(&t_init, &tm);
           t = mktime(&tm);
@@ -352,6 +386,7 @@ int main() {
           min = tm.tm_min;
           if (difftime(t, ts) > starmap_update_period){
               loop = 0;
+              to_update = 1;
           }
 
           if (min != old_min) {
@@ -362,16 +397,29 @@ int main() {
               lon = starmap.siteLon;
               disp_lat_lon(lat, lon, 5, 10, LILAC_COLOR);
               // Draw time
-              disp_time(hr, min, 170, 290, WHITE_COLOR);
+              disp_time(hr, min, 170, 270, WHITE_COLOR);
               // Draw date
               disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, 5, 303, GOLD_COLOR);
               // Displaying the image
               st7789.update(&graphics);
           }
+          // switching mode with buttons
+          if(button_x.raw()) {
+              mode = 0;
+              to_update = 1;
+              led.set_rgb(255, 0, 0);
+          }
+          if(button_y.raw()) {
+              mode = 1;
+              to_update = 1;
+              led.set_rgb(200, 200, 200);
+          }
 
-          sleep_ms(1000);
+          //printf("in small loop\n");
+          sleep_ms(200);
       }
-
+      //printf("in big loop\n");
+      sleep_ms(200);
   }
   return(0);
 }
@@ -499,7 +547,7 @@ void disp_time(int hr, int min, int x, int y, int color) {
 void disp_date(int year, int month, int day, int x, int y, int color) {
     char text_string[50];
     int width;
-    sprintf(text_string, "%02d %s %d", day, months[month], year);
+    sprintf(text_string, "%s %02d %s %d", wd(year, month + 1, day), day, months[month], year);
 
     width = 130;
     Rect box(x-1, y-1, width, 20);
@@ -518,10 +566,50 @@ void disp_date(int year, int month, int day, int x, int y, int color) {
     graphics.text(text_string, Point(x,y), 240, 2);
 }
 
+// draw manual mode
+void draw_manual_mode(int x, int y, int color) {
+    int width;
+
+    width = 100;
+    Rect box(x-1, y-1, width, 20);
+    box.inflate(1); // Inflate our box by 1px on all sides
+    graphics.set_pen(BLACK);
+    graphics.rectangle(box);
+
+    r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+    g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+    b = ((color & 0x1F) * 527 + 23) >> 6;
+    //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+    graphics.reset_pen(col);
+    col = graphics.create_pen(r,g,b);
+    graphics.set_pen(col);
+    graphics.set_font(&font6);
+    graphics.text("MANUAL", Point(x,y), 240, 2);
+}
+
 /* A basic callback function that triggers when an alarm triggers. */
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask) {
     printf("Alarm Enabled\n");
 }
+
+// function to calculate day of week
+// https://stackoverflow.com/questions/6054016/c-program-to-find-day-of-week-given-date
+const char *wd(int year, int month, int day) {
+  /* using C99 compound literals in a single line: notice the splicing */
+  return ((const char *[])                                              \
+          {"Lun", "Mar", "Mer",                                    \
+           "Jeu", "Ven", "Sam", "Dim"})[                           \
+      (                                                            \
+          day                                                      \
+        + ((153 * (month + 12 * ((14 - month) / 12) - 3) + 2) / 5) \
+        + (365 * (year + 4800 - ((14 - month) / 12)))              \
+        + ((year + 4800 - ((14 - month) / 12)) / 4)                \
+        - ((year + 4800 - ((14 - month) / 12)) / 100)              \
+        + ((year + 4800 - ((14 - month) / 12)) / 400)              \
+        - 32045                                                    \
+      ) % 7];
+}
+
 
 // ************ Yale star data *****************
 
