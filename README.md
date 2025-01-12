@@ -340,6 +340,7 @@ nano ~/.profile
  
  #### Correcting linker Flash size definition (in case an error of Flash overflow occurs)
  
+ **This has been resolved as of Jan 12th 2025. No need to manually change the value**
  As of May 17th 2024, linker scripts are not generated from templates at build time, and do not allow for substitution of board parameters. They are hardcoded in `pico-sdk/src/rp2_common/pico_standard_link/memmap_default.ld`. We need to change that manually for the firmware to compile. See this github issue [#398](https://github.com/raspberrypi/pico-sdk/issues/398), this one [#8680](https://github.com/micropython/micropython/issues/8680) and this [thread](https://forums.raspberrypi.com/viewtopic.php?t=311163) on Raspi Forum.
 To do so, we edit the `pico-sdk/src/rp2_common/pico_standard_link/memmap_default.ld` and change the FLASH size to 4MB (`4194304` B or `4096k`).
 
@@ -361,23 +362,33 @@ MEMORY
 *NB: This is the file used for linker for rp2040 boards. For other boards, seek for the corresponding files each corresponding `ports` folder* 
  
 ### Building
-List of boards can be find here : `pico-sdk/src/boards/include/boards/`
+- Setting  board is done in `CmakeLists.txt`,  line `set(PICO_BOARD pico_w`
+    - List of boards can be find here : `pico-sdk/src/boards/include/boards/` 
+- Pin used for the RTC are in `main.cpp` : 
 
+``` c++
+#define RTC_SDA_PIN 0
+#define RTC_SCL_PIN 1
+#define RTC_INT_PIN 18
+```
+
+Then building it is done with :
 ```
 cd starmap-obe/examples/StarmapPico
 mkdir -p build
 cd build
-cmake -DPICO_BOARD=waveshare_rp2040_plus_4mb .. # PICO_BOARD definition set up the chosen board
+cmake ..
 make
 ```
 
+By doing that, a `starmap.uf2`  firmware is generated that can be flashed on the microcontroller.
 
-
-By doing that, a `starmap`  executable will be built in the build folder. 
-
-You can then execute `./starmap`.
-
-If you get the following error `Debug : gpiochip0 Export Failed`, it means there is a permission problem. either execute as `sudo`, `sudo ./starmap`.
+### Serial console
+``` bash
+ls /dev/tty.*
+screen /dev/tty.usbmodem101 115200 # or
+minicom -b 115200 -o -D /dev/tty.usbmodem101
+```
 
 
 ## Acknowledgement

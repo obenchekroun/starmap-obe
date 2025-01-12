@@ -1,32 +1,100 @@
 // ********** Starmap main code *************
-// rev 1 - shabaz - May 2024
+// rev 1 - obenchekroun - Jan 2025
 //
 
+// ******** includes ********
+// General libraries
 #include <stdio.h>
 #include "../../src/Starmap.h"
-//#include <png.h>
 
 #include "pico/stdlib.h"
 #include <string.h>
 #include <stdint.h>
+//#include <string>
 #include <time.h>
+//#include <math.h>
+//#include <vector>
+#include <cstdlib>
 
+// RTC
+#include "hardware/rtc.h"
+#include "pico/stdlib.h"
+#include "pico/util/datetime.h"
+//DS3231 lib
+extern "C" {
+   #include "ds3231.h"
+}
+// Display libraries
+#include "libraries/pico_display_2/pico_display_2.hpp"
+#include "drivers/st7789/st7789.hpp"
+#include "libraries/pico_graphics/pico_graphics.hpp"
+#include "rgbled.hpp"
+#include "button.hpp"
 
-// defines
+using namespace pimoroni;
+
+// ******** defines ********
 // #define GENERATE_BIN
+#define FOREVER 1
+#define DELAY_MS delay
+// time offset, example: 1 hour ahead of UTC (e.g. British Summer Time) is 1
+#define DISPLAYED_TIME_OFFSET 1
 #define IMAGE_ALPHA_CHANNEL 255
 // TFT dimensions
 #define TFT_W 240
-#define TFT_H 240
+#define TFT_H 320
+// default co-ordinates, lat: deg N, lon: deg W
+#define DEFAULT_LAT 33.589886
+#define DEFAULT_LON -7.603869
+//Some colors in RGB565 format for the display
+#define SM_COL_COORD_GRID        0x4a49
+#define SM_COL_ECLIPTIC          0xab91
+#define SM_COL_CONSTEL           0x326b
+#define SM_COL_STARDIM           0xa520
+#define SM_COL_STARBRIGHT        0xffe0
+#define SM_COL_STARTEXT          0x033f //0x001f
+#define SM_COL_MOON_BRIGHT       0xffff
+#define SM_COL_MOON_DIM          0xe71c
+#define SM_COL_MOON_DARK         0xce79
+#define SM_COL_MOON_PHTEXT       0x0000
+#define SM_COL_TEXT_GENERIC      0xc618
+#define SM_COL_STARBRIGHT_TEXT   0x05df //0x001f
+#define SM_COL_ECLIPTIC_TEXT     0xab91
+#define SM_COL_CELEST_EQ_TEXT    0x4a49
+#define SM_COL_CONSTEL_TEXT      0x0030
+#define GOLD_COLOR               0xfda4
+#define WHITE_COLOR              0xffff
+#define LILAC_COLOR              0xbcbc
 
+//10x12 font for N,E,S,W characters only
+const uint16_t font10_12[4][12] = {
+  { 0x0fff, 0x0fff, 0x0700, 0x03c0, 0x01e0, 0x0078, 0x003c, 0x000e, 0x0fff, 0x0fff },
+  { 0x0fff, 0x0fff, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c03, 0x0c03 },
+  { 0x038c, 0x07ce, 0x0ee7, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0e77, 0x073e, 0x031c },
+  { 0x0f80, 0x0ff8, 0x00ff, 0x0007, 0x007e, 0x007e, 0x0007, 0x00ff, 0x0ff8, 0x0f80 }
+};
+#define NORTH_SYMBOL 0
+#define EAST_SYMBOL 1
+#define SOUTH_SYMBOL 2
+#define WEST_SYMBOL 3
+#define NESW_COLOR 0xf800
+#define DEFAULT_UPDATE_DELAY 5 // in minutes
+// DS3231 HW RTC definition
+#define RTC_SDA_PIN 0
+#define RTC_SCL_PIN 1
+#define RTC_INT_PIN 18
+const char * days[7] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
+const char * months[12] = {"Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"};
+
+// ***** class based on Starmap ******
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);
-    //void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
+     //void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
     //void text_out(int x, int y, char* lab, unsigned char len, char type);
     int storage_read(uint32_t addr, char* data, uint16_t len);
 };
 
-// global vars
+// ******** global variables ********
 const char id_string[12]="starmap v01"; // must be 11 characters
 extern const unsigned char yale_array[112217];
 extern const unsigned char constellation_array[12960]; // constellation names array
@@ -34,27 +102,52 @@ extern const uint16_t constellation_lines_array[3882]; // join-the-dots lines
 extern const uint16_t constellation_bound_array[2631];
 const char yale_end_string[33]="YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"; // must be 32 Y characters
 SM starmap;
+// for the png
 //char screen_ram[TFT_H][TFT_W];
 size_t nbytes; // to store number of bytes for snprintf
+// update period delay
+double starmap_update_period = DEFAULT_UPDATE_DELAY * 60;  // multiply by 60 to convert minutes to seconds
+// for the display
+ST7789 st7789(320, 240, ROTATE_90, false, get_spi_pins(BG_SPI_FRONT));
+PicoGraphics_PenRGB565 graphics(st7789.width, st7789.height, nullptr);
+RGBLED led(PicoDisplay2::LED_R, PicoDisplay2::LED_G, PicoDisplay2::LED_B);
+Button button_a(PicoDisplay2::A);
+Button button_b(PicoDisplay2::B);
+Button button_x(PicoDisplay2::X);
+Button button_y(PicoDisplay2::Y);
+Pen BG;
+Pen WHITE;
+Pen BLACK;
+Pen col;
+uint8_t r;
+uint8_t g;
+uint8_t b;
 
-// // function prototypes
+// ******** function prototypes ************
 // //void write_png_image(char* filename);
+void plot_char_10_12(char c, int x, int y, int color);  // only supports N, E, S, W characters
+void disp_lat_lon(double lat, double lon, int x, int y, int color);
+void disp_time(int hr, int min, int x, int y, int color);
+void disp_date(int year, int month, int day, int x, int y, int color);
+void draw_NESW (char c[], int x, int y, int color);
+void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm);
+void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
+// int msleep(long msec); // already defined in pico-sdk
 
 // plot_pixel
 void SM::plot_pixel(uint16_t color, int x, int y) {
-    if (x>TFT_W) return;
-    if (x<0) return;
-    if (y>TFT_H) return;
-    if (y<0) return;
-    // if (color==0) {
-    //     screen_ram[y][x] = 0;
-    // } else if (color <= 0x00ff) {
-    //     screen_ram[y][x] = 1;
-    // } else if (color <= 0xff00) {
-    //     screen_ram[y][x] = 2;
-    // } else {
-    //     screen_ram[y][x] = 3;
-    // }
+    if (x<0) x=0;
+    if (y<0) y=0;
+    if (x>=TFT_W) x=TFT_W-1;
+    if (y>=TFT_H) y=TFT_H-1;
+    r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+    g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+    b = ((color & 0x1F) * 527 + 23) >> 6;
+    //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+    graphics.reset_pen(col);
+    col = graphics.create_pen(r,g,b);
+    graphics.set_pen(col);
+    graphics.pixel(Point(x, y));
 }
 
 int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
@@ -68,192 +161,367 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 // ************* main code *****************
 int main() {
     stdio_init_all(); // Initialize standard IO
-    int k = 10;
-    while (k >= 0) {
-        printf("Testing in %d sec...\n", k);
-        k++;
-        sleep_ms(1000);
-    }
+    // int k = 3;
+    // while (k >= 0) {
+    //     printf("Testing in %d sec...\n", k);
+    //     k--;
+    //     sleep_ms(1000);
+    // }
 
   double mag=5;
   rect_s br;
   int i, j;
+  double lat, lon;
+  int hr, min;
+  int old_min = -1;
+  tm_t mytime; // for setting time of Starmap object
+  time_t t; // get current time from system
+  time_t ts; // timestamp to check if period delay of update has passed
+  struct tm tm; // structure for the time
+  int dotw; //day of the week
+  int loop;
 
-  tm_t mytime;
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
 
-  //starmap.siteLat = 47; // default; used for the out_ok.png
-  //starmap.siteLon = 122; // default; used for the out_ok.png
-  starmap.siteLat = 33.589886; // casablanca, Morocco
-  starmap.siteLon = -7.603869; // Casablanca, Morocco
+  starmap.siteLat = DEFAULT_LAT; // casablanca, Morocco
+  starmap.siteLon = DEFAULT_LON; // Casablanca, Morocco
 
-  // default; used for the out_ok.png
-  mytime.tm_sec=0;   // seconds 0-61?
-  mytime.tm_min=18;  // minutes 0-59
-  mytime.tm_hour=23;  // hour 0-23
-  mytime.tm_mday=16;  // date 1-31
-  mytime.tm_mon=7; // month 0-11
-  mytime.tm_year=104; // years since 1900. Example: 104 means 1900+104 = year 2004
+  // Overrides some of the default colors
+  starmap.col_coord_grid = SM_COL_COORD_GRID;
+  starmap.col_ecliptic = SM_COL_ECLIPTIC;
+  starmap.col_constel = SM_COL_CONSTEL;
+  starmap.col_stardim = SM_COL_STARDIM;
+  starmap.col_starbright = SM_COL_STARBRIGHT;
+  starmap.col_startext = SM_COL_STARTEXT;
+  starmap.col_moon_bright = SM_COL_MOON_BRIGHT;
+  starmap.col_moon_dim = SM_COL_MOON_DIM;
+  starmap.col_moon_dark = SM_COL_MOON_DARK;
+  starmap.col_moon_phtext = SM_COL_MOON_PHTEXT;
+  starmap.col_constel_text = SM_COL_CONSTEL_TEXT;
+  starmap.col_bright_st_text = SM_COL_STARBRIGHT_TEXT;
+  starmap.col_ecliptic_text = SM_COL_ECLIPTIC_TEXT;
+  starmap.col_celest_eq_text = SM_COL_CELEST_EQ_TEXT;
+  starmap.col_bayerf_text = SM_COL_TEXT_GENERIC;
 
-  // time_t t = time(NULL);
-  // struct tm tm = *localtime(&t);
-  // mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
-  // mytime.tm_min=tm.tm_min;  // minutes 0-59
-  // mytime.tm_hour=tm.tm_hour;  // hour 0-23
-  // mytime.tm_mday=tm.tm_mday;  // date 1-31
-  // mytime.tm_mon=tm.tm_mon; // month 0-11
-  // mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
-  printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d\nLocation: LAT=%f and LONG=%f\n", mytime.tm_year + 1900, mytime.tm_mon + 1, mytime.tm_mday, mytime.tm_hour, mytime.tm_min, mytime.tm_sec, starmap.siteLat, starmap.siteLon);
+  // initializing RTC
+  printf("Initialising DS3231 ...\n");
+  char datetime_buf[256];
+  /* Define structure to get time */
+    ds3231_data_t ds3231_data = {
+        .seconds = 25,
+        .minutes = 23,
+        .hours = 23,
+        .am_pm = false,
+        .day = 4,
+        .date = 10,
+        .month = 8,
+        .century = 1,
+        .year = 23
+    };
+  ds3231_t ds3231;
+  /* Initiliaze ds3231 struct. */
+  ds3231_init(&ds3231, i2c_default, DS3231_DEVICE_ADRESS, AT24C32_EEPROM_ADRESS_0);
+  sleep_ms(200);
+  /* Initiliaze I2C line. */
+  gpio_init(RTC_SDA_PIN);
+  gpio_init(RTC_SCL_PIN);
+  gpio_set_function(RTC_SDA_PIN, GPIO_FUNC_I2C);
+  gpio_set_function(RTC_SCL_PIN, GPIO_FUNC_I2C);
+  gpio_pull_up(RTC_SDA_PIN);
+  gpio_pull_up(RTC_SCL_PIN);
+  i2c_init(ds3231.i2c, 400 * 1000);
+  sleep_ms(200);
+  // Start on Friday 5th of June 2020 15:45:00
+  /* Read the time registers of DS3231. */
+  if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
+      printf("No data is received\nReverting to default time");
 
+      } else {
+          dotw = ds3231_data.day == 0 ? 6 : ds3231_data.day - 1;
+          printf("Time read from RTC DS3231 : %02u:%02u:%02u    %10s    %02u/%02u/20%02u\n",
+             ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
+             days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
+  }
 
-  starmap.jdtime=starmap.jtime(&mytime);
-  nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
-  snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
+  datetime_t t_init = {
+            .year  = (int8_t)ds3231_data.year,
+            .month = (int8_t)ds3231_data.month,
+            .day   = (int8_t)ds3231_data.date,
+            .dotw  = (int8_t)dotw, // 0 is Sunday, so 5 is Friday
+            .hour  = (int8_t)ds3231_data.hours,
+            .min   = (int8_t)ds3231_data.minutes,
+            .sec   = (int8_t)ds3231_data.seconds
+  };
 
+  // Start the RTC
+  rtc_init();
+  rtc_set_datetime(&t_init);
+  // clk_sys is >2000x faster than clk_rtc, so datetime is not updated immediately when rtc_get_datetime() is called.
+  // The delay is up to 3 RTC clock cycles (which is 64us with the default clock settings)
+  sleep_us(64);
 
-  // for (i=0;i<TFT_H;i++)
-  // {
-  //   for (j=0;j<TFT_W;j++)
-  //   {
-  //     screen_ram[i][j]=0;
-  //     }
-  // }
+  // Setting up the screen
+  printf("Setting up the screen!\n");
+  BLACK = graphics.create_pen(0, 0, 0);
+  WHITE = graphics.create_pen(255, 255, 255);
+  graphics.set_pen(BLACK);
+  graphics.clear();
+  st7789.update(&graphics);
+  printf("Screen Setup\r\n");
+  //sleep_ms(10000);
 
-  br.left=0;
-  br.right=TFT_W;
-  br.top=0;
-  br.bottom=TFT_H;
+  while(FOREVER){
+      // Get time
+      rtc_get_datetime(&t_init);
+      datetime_to_tm_obe(&t_init, &tm);
+      t = mktime(&tm);
+      hr = tm.tm_hour;
+      min = tm.tm_min;
 
-  starmap.set_col(1);
-  starmap.do_constellation_text = 0;
-  starmap.paintSky(mag, &br);
+      printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
 
-   //write_png_image((char*)"sky.png");
+      mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
+      mytime.tm_min=tm.tm_min;  // minutes 0-59
+      mytime.tm_hour=tm.tm_hour;  // hour 0-23
+      mytime.tm_mday=tm.tm_mday;  // date 1-31
+      mytime.tm_mon=tm.tm_mon; // month 0-11
+      mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
 
-  printf("done!\n");
+      // time_t t = time(NULL);
+      // struct tm tm = *localtime(&t);
+      // printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", t.year, t.month, t.day, t.hour, t.min, t.sec, starmap.siteLat, starmap.siteLon);
+      // mytime.tm_sec=t.sec;   // seconds 0-61?
+      // mytime.tm_min=t.min;  // minutes 0-59
+      // mytime.tm_hour=t.hour;  // hour 0-23
+      // mytime.tm_mday=t.day;  // date 1-31
+      // mytime.tm_mon=t.month-1; // month 0-11
+      // mytime.tm_year=t.year-1900; // years since 1900. Example: 104 means 1900+104 = year 2004
+
+      starmap.jdtime=starmap.jtime(&mytime);
+      nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
+      snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
+
+      starmap.siteLat = 33.589886; // casablanca, Morocco
+      starmap.siteLon = -7.603869; // Casablanca, Morocco
+
+      // Setting up the rectangle for Starmap class
+      br.left=0;
+      br.right=TFT_W;
+      br.top=0;
+      br.bottom=TFT_H;
+
+      //Clearing the image
+      graphics.set_pen(BLACK);
+      graphics.clear();
+      st7789.update(&graphics);
+
+      starmap.set_col(1);
+      starmap.do_constellation_text = 0;
+      // Painting the sky
+      starmap.paintSky(mag, &br);
+
+      // Draw compass on screen
+      draw_NESW((char*)"N", 115,30,NESW_COLOR);
+      draw_NESW((char*)"E", 10,155,NESW_COLOR);
+      draw_NESW((char*)"S", 115,270,NESW_COLOR);
+      draw_NESW((char*)"W", 224,155,NESW_COLOR);
+
+      // Draw lat and long on screen
+      lat = starmap.siteLat;
+      lon = starmap.siteLon;
+      disp_lat_lon(lat, lon, 5, 10, LILAC_COLOR);
+      // Draw time on screen
+      disp_time(hr, min, 170, 290, WHITE_COLOR);
+      // Draw date
+      disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, 5, 303, GOLD_COLOR);
+
+      // update the screen
+      st7789.update(&graphics);
+
+      rtc_get_datetime(&t_init);
+      datetime_to_tm_obe(&t_init, &tm);
+      ts = mktime(&tm);
+
+      loop = 1;
+      while (loop) {
+          rtc_get_datetime(&t_init);
+          datetime_to_tm_obe(&t_init, &tm);
+          t = mktime(&tm);
+          hr = tm.tm_hour;
+          min = tm.tm_min;
+          if (difftime(t, ts) > starmap_update_period){
+              loop = 0;
+          }
+
+          if (min != old_min) {
+              old_min = min;
+              printf("updating the time\n");
+              // Draw lat and long on screen
+              lat = starmap.siteLat;
+              lon = starmap.siteLon;
+              disp_lat_lon(lat, lon, 5, 10, LILAC_COLOR);
+              // Draw time
+              disp_time(hr, min, 170, 290, WHITE_COLOR);
+              // Draw date
+              disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, 5, 303, GOLD_COLOR);
+              // Displaying the image
+              st7789.update(&graphics);
+          }
+
+          sleep_ms(1000);
+      }
+
+  }
   return(0);
 }
 
+void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm) {
+    dest_tm->tm_sec=source_datetime->sec;   // seconds 0-61?
+    dest_tm->tm_min=source_datetime->min;  // minutes 0-59
+    dest_tm->tm_hour=source_datetime->hour;  // hour 0-23
+    dest_tm->tm_mday=source_datetime->day;  // date 1-31
+    dest_tm->tm_mon=source_datetime->month-1; // month 0-11
+    dest_tm->tm_year=source_datetime->year+100; // years since 1900. Example: 104 means 1900+104 = year 2004
+}
 
 // ************** other functions *********************
-// void write_png_image(char* filename)
-// {
-//     png_byte** row_pointers; // pointer to image bytes
-//     FILE* fp; // file for image
+// plot_char_10_12 only supports N, E, S, W characters
+void plot_char_10_12(char c, int x, int y, int color) {
+  int i, j;
+  // check that the character is in the font
+  // only 0-3 are valid (N, E, S, W)
+  if (c > 3 || c < 0) {
+    return;
+  }
 
-//     do // one time do-while to properly free memory and close file after error
-//     {
-//         row_pointers = (png_byte**)malloc(sizeof(png_byte*) * TFT_H);
-//         if (!row_pointers)
-//         {
-//             printf("Allocation failed\n");
-//             break;
-//         }
-//         for (int i = 0; i < TFT_H; i++)
-//         {
-//             row_pointers[i] = (png_byte*)malloc(4*TFT_W);
-//             if (!row_pointers[i])
-//             {
-//                 printf("Allocation failed\n");
-//                 break;
-//             }
-//         }
-//         // fill image with color
-//         int xinc;
-//         for (int y = 0; y < TFT_H; y++)
-//         {
-//             xinc=0;
-//             for (int x = 0; x < TFT_W*4; x+=4)
-//             {
-//                 if (screen_ram[y][xinc] == 0) {
-//                     row_pointers[y][x] = 0;     //r
-//                     row_pointers[y][x + 1] = 0; //g
-//                     row_pointers[y][x + 2] = 0; //b
-//                 } else if (screen_ram[y][xinc] == 1) {
-//                     row_pointers[y][x] = 255;     //r
-//                     row_pointers[y][x + 1] = 0; //g
-//                     row_pointers[y][x + 2] = 0; //b
-//                 } else if (screen_ram[y][xinc] == 2) {
-//                     row_pointers[y][x] = 0;     //r
-//                     row_pointers[y][x + 1] = 255; //g
-//                     row_pointers[y][x + 2] = 0; //b
-//                 } else if (screen_ram[y][xinc] == 3) {
-//                     row_pointers[y][x] = 0;     //r
-//                     row_pointers[y][x + 1] = 0; //g
-//                     row_pointers[y][x + 2] = 255; //b
-//                 } else {
-//                     row_pointers[y][x] = 255;     //r
-//                     row_pointers[y][x + 1] = 255; //g
-//                     row_pointers[y][x + 2] = 255; //b
-//                 }
+  for (i = 0; i < 10; i++) {
+    for (j = 0; j < 12; j++) {
+      if (font10_12[c][i] & (1 << j)) {
+        graphics.set_pen(color);
+        graphics.pixel(Point(x+1,y-j));
+        //Paint_DrawPoint(x+i, y-j, color, DOT_PIXEL_1X1,DOT_FILL_AROUND);
+      } else {
+        //Paint_DrawPoint(x+i, y-j, BLACK, DOT_PIXEL_1X1,DOT_FILL_AROUND);
+        graphics.set_pen(BLACK);
+        graphics.pixel(Point(x+1,y-j));
+      }
+    }
+  }
+}
 
-//                 row_pointers[y][x + 3] = IMAGE_ALPHA_CHANNEL; //a
-//                 xinc++;
-//             }
-//         }
-//         //printf("%d %d %d %d\n", row_pointers[0][0], row_pointers[0][1], row_pointers[0][2], row_pointers[0][3]);
+void draw_NESW (char c[], int x, int y, int color) {
+    r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+    g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+    b = ((color & 0x1F) * 527 + 23) >> 6;
+    //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+    graphics.reset_pen(col);
+    col = graphics.create_pen(r,g,b);
+    graphics.set_pen(col);
 
-//         fp = fopen(filename, "wb"); //create file for output
-//         if (!fp)
-//         {
-//             printf("Open file failed\n");
-//             break;
-//         }
-//         png_struct* png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //create structure for write
-//         if (!png)
-//         {
-//             printf("Create write struct failed\n");
-//             break;
-//         }
-//         png_infop info = png_create_info_struct(png); // create info structure
-//         if (!info)
-//         {
-//             printf("Create info struct failed\n");
-//             break;
-//         }
-//         if (setjmp(png_jmpbuf(png))) // this is some routine for errors?
-//         {
-//             printf("setjmp failed\n");
-//         }
-//         png_init_io(png, fp); //initialize file output
-//         png_set_IHDR( //set image properties
-//             png, //pointer to png_struct
-//             info, //pointer to info_struct
-//             TFT_W, //image width
-//             TFT_H, //image height
-//             8, //color depth
-//             PNG_COLOR_TYPE_RGBA, //color type
-//             PNG_INTERLACE_NONE, //interlace type
-//             PNG_COMPRESSION_TYPE_DEFAULT, //compression type
-//             PNG_FILTER_TYPE_DEFAULT //filter type
-//             );
-//         png_write_info(png, info); //write png image information to file
-//         png_write_image(png, row_pointers); //the thing we gathered here for
-//         png_write_end(png, NULL);
-//         printf("Image was created successfully\nCheck %s file\n", filename);
-//     } while(0);
-//     //close file
-//     if (fp)
-//     {
-//         fclose(fp);
-//     }
-//     //free allocated memory
-//     for (int i = 0; i < TFT_H; i++)
-//     {
-//         if (row_pointers[i])
-//         {
-//             free(row_pointers[i]);
-//         }
-//     }
-//     if (row_pointers)
-//     {
-//         free(row_pointers);
-//     }
-// }
+    graphics.set_font(&font6);
+    graphics.text(c, Point(x,y), 240, 2.5);
+}
+
+//displaying latitude and longitude
+void disp_lat_lon(double lat, double lon, int x, int y, int color) {
+  char text_string[32];
+  char neg_lat = 0;
+  char neg_lon = 0;
+  int width;
+
+  if (lat < 0) {
+    neg_lat = 1;
+    lat = 0 - lat;
+  }
+  if (lon < 0) {
+    neg_lon = 1;
+    lon = 0 - lon;
+  }
+  // build text string; there must be an easier way to do this!
+  if (neg_lat) {
+    if (neg_lon) {
+      sprintf(text_string, "LAT:-%02d.%03dN LON:-%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    } else {
+      sprintf(text_string, "LAT:-%02d.%03dN LON:%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    }
+  } else {
+    if (neg_lon) {
+      sprintf(text_string, "LAT:%02d.%03dN LON:-%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    } else {
+      sprintf(text_string, "LAT:%02d.%03dN LON:%02d.%03dW", (int)lat, (int)((lat - (int)lat) * 1000), (int)lon, (int)((lon - (int)lon) * 1000));
+    }
+  }
+
+  width = 158;
+  if (neg_lat) width += 8;
+  if (neg_lon) width += 8;
+  Rect box(x-1, y-1, width, 10);
+  box.inflate(1); // Inflate our box by 1px on all sides
+  graphics.set_pen(BLACK);
+  graphics.rectangle(box);
 
 
+  r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+  g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+  b = ((color & 0x1F) * 527 + 23) >> 6;
+  //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+  graphics.reset_pen(col);
+  col = graphics.create_pen(r,g,b);
+  graphics.set_pen(col);
+  graphics.set_font(&font6);
+  graphics.text(text_string, Point(x,y), 240, 2);
+}
 
+//displaying time
+void disp_time(int hr, int min, int x, int y, int color) {
+  char text_string[6];
+  int width;
+  sprintf(text_string, "%02d:%02d", hr, min);
+
+  width = 158;
+  Rect box(x-1, y-1, width, 20);
+  box.inflate(1); // Inflate our box by 1px on all sides
+  graphics.set_pen(BLACK);
+  graphics.rectangle(box);
+
+  r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+  g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+  b = ((color & 0x1F) * 527 + 23) >> 6;
+  //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+  graphics.reset_pen(col);
+  col = graphics.create_pen(r,g,b);
+  graphics.set_pen(col);
+  graphics.set_font(&font6);
+  graphics.text(text_string, Point(x,y), 240, 3);
+}
+
+void disp_date(int year, int month, int day, int x, int y, int color) {
+    char text_string[50];
+    int width;
+    sprintf(text_string, "%02d %s %d", day, months[month], year);
+
+    width = 130;
+    Rect box(x-1, y-1, width, 20);
+    box.inflate(1); // Inflate our box by 1px on all sides
+    graphics.set_pen(BLACK);
+    graphics.rectangle(box);
+
+    r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+    g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+    b = ((color & 0x1F) * 527 + 23) >> 6;
+    //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+    graphics.reset_pen(col);
+    col = graphics.create_pen(r,g,b);
+    graphics.set_pen(col);
+    graphics.set_font(&font6);
+    graphics.text(text_string, Point(x,y), 240, 2);
+}
+
+/* A basic callback function that triggers when an alarm triggers. */
+void ds3231_interrupt_callback(uint gpio, uint32_t event_mask) {
+    printf("Alarm Enabled\n");
+}
 
 // ************ Yale star data *****************
 
