@@ -310,7 +310,7 @@ sudo make -j 8
 sudo ./main 1.28
 ```
 
-## Starmap on RP2040 board
+## Starmap on RP2040 board + Pico Display Pack 2.0 + DS3231
 
 ### Required hardware
 - RP2040 or RP2050 board
