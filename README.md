@@ -310,12 +310,14 @@ sudo make -j 8
 sudo ./main 1.28
 ```
 
-## Starmap on RP2040 board + Pico Display Pack 2.0 + DS3231
+## Starmap on RP2040 wifi board + Pico Display Pack 2.0 + DS3231
 
 ### Required hardware
 - RP2040 or RP2050 board
 - Pimoroni Display Pack 2.0
 - DS3231 RTC module. Adafruit has a compact one [link](https://www.adafruit.com/product/3013), but any can do. *NB: PiSugar has an RTC embedded*.
+
+This build uses wi-fi capabilities to set DS3231 time when wifi is available through NTP.
 
 ###  Dependencies
 The firmware can be built on any linux machine. You need to set up the pico-SDK :
@@ -338,7 +340,7 @@ nano ~/.profile
 ```
  and add `export PICO_SDK_PATH="/path/to/pico-sdk"` at the end.
  
- #### Correcting linker Flash size definition (in case an error of Flash overflow occurs)
+ #### Correcting linker Flash size definition (in case an error of Flash overflow occurs) if using other RP2040 boards
  
  **This has been resolved as of Jan 12th 2025. No need to manually change the value**
  As of May 17th 2024, linker scripts are not generated from templates at build time, and do not allow for substitution of board parameters. They are hardcoded in `pico-sdk/src/rp2_common/pico_standard_link/memmap_default.ld`. We need to change that manually for the firmware to compile. See this github issue [#398](https://github.com/raspberrypi/pico-sdk/issues/398), this one [#8680](https://github.com/micropython/micropython/issues/8680) and this [thread](https://forums.raspberrypi.com/viewtopic.php?t=311163) on Raspi Forum.
@@ -362,14 +364,19 @@ MEMORY
 *NB: This is the file used for linker for rp2040 boards. For other boards, seek for the corresponding files each corresponding `ports` folder* 
  
 ### Building
-- Setting  board is done in `CmakeLists.txt`,  line `set(PICO_BOARD pico_w`
+- Setting  board is done by passing the correct varaible to cmake `-DPICO_BOARD=pico_w`. It is necessary to set it through cmake and not `C%akeLists.txt` so cmake pulls the correct libraries for the pico_w.
     - List of boards can be find here : `pico-sdk/src/boards/include/boards/` 
 - Pin used for the RTC are in `main.cpp` : 
-
 ``` c++
 #define RTC_SDA_PIN 0
 #define RTC_SCL_PIN 1
 #define RTC_INT_PIN 18
+```
+
+- Timezone offset for the NTP, in `main.cpp` : 
+
+``` c++
+#define TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
 ```
 
 Then building it is done with :
@@ -377,14 +384,17 @@ Then building it is done with :
 cd starmap-obe/examples/StarmapPico
 mkdir -p build
 cd build
-cmake ..
+cmake .. -DPICO_BOARD=pico_w -DWIFI_SSID="<your wifi ssid>" -DWIFI_PASSWORD="<your wifi password>"
 make
 ```
+*Make sure to put the correct values for `<your wifi ssid>` and `<your wifi password>`*.
+These values can be set in the `CMakeLists.txt` with the lines `set(WIFI_SSID "<PUT WIFI SSID HERE>")` and `set(WIFI_PASSWORD "<PUT WIFI PASSWORD>")`.
 
-By doing that, a `starmap.uf2`  firmware is generated that can be flashed on the microcontroller.
+A `starmap.uf2`  firmware is generated that can be flashed on the microcontroller.
 
 ### Usage
 Flashing the firmware will get you running. 
+On startup, the pico will attempt for 10 sec to get to wifi and update the time of the DS3231. If failed, it will pull the time from the DS3231.
 The code makes use of the 4 buttons on the Pimoroni pico display pack :
 - `X` : switch to manual mode (with manula written on the screen and the led turning red), which allows you to get forward and backward in time resp. with the buttons `B` and `A`
   - in this mode, the screen won't be updated unless a button is pressed

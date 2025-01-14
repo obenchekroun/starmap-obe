@@ -10,7 +10,6 @@
 #include "pico/stdlib.h"
 #include <string.h>
 #include <stdint.h>
-//#include <string>
 #include <time.h>
 //#include <math.h>
 //#include <vector>
@@ -24,6 +23,13 @@
 extern "C" {
    #include "ds3231.h"
 }
+// NTP client
+#include "pico/cyw43_arch.h"
+
+#include "lwip/dns.h"
+#include "lwip/pbuf.h"
+#include "lwip/udp.h"
+
 // Display libraries
 #include "libraries/pico_display_2/pico_display_2.hpp"
 #include "drivers/st7789/st7789.hpp"
@@ -37,8 +43,6 @@ using namespace pimoroni;
 // #define GENERATE_BIN
 #define FOREVER 1
 #define DELAY_MS delay
-// time offset, example: 1 hour ahead of UTC (e.g. British Summer Time) is 1
-#define DISPLAYED_TIME_OFFSET 1
 #define IMAGE_ALPHA_CHANNEL 255
 // TFT dimensions
 #define TFT_W 240
@@ -46,6 +50,7 @@ using namespace pimoroni;
 // default co-ordinates, lat: deg N, lon: deg W
 #define DEFAULT_LAT 33.589886
 #define DEFAULT_LON -7.603869
+#define TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
 //Some colors in RGB565 format for the display
 #define SM_COL_COORD_GRID        0x4a49
 #define SM_COL_ECLIPTIC          0xab91
@@ -67,18 +72,8 @@ using namespace pimoroni;
 #define LILAC_COLOR              0xbcbc
 #define RED_COLOR                0xf800
 
-//10x12 font for N,E,S,W characters only
-const uint16_t font10_12[4][12] = {
-  { 0x0fff, 0x0fff, 0x0700, 0x03c0, 0x01e0, 0x0078, 0x003c, 0x000e, 0x0fff, 0x0fff },
-  { 0x0fff, 0x0fff, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0c03, 0x0c03 },
-  { 0x038c, 0x07ce, 0x0ee7, 0x0c63, 0x0c63, 0x0c63, 0x0c63, 0x0e77, 0x073e, 0x031c },
-  { 0x0f80, 0x0ff8, 0x00ff, 0x0007, 0x007e, 0x007e, 0x0007, 0x00ff, 0x0ff8, 0x0f80 }
-};
-#define NORTH_SYMBOL 0
-#define EAST_SYMBOL 1
-#define SOUTH_SYMBOL 2
-#define WEST_SYMBOL 3
-#define NESW_COLOR 0xf800
+#define NESW_COLOR               0xf800
+
 #define DEFAULT_UPDATE_DELAY 5 // in minutes
 // DS3231 HW RTC definition
 #define RTC_SDA_PIN 0
@@ -86,6 +81,22 @@ const uint16_t font10_12[4][12] = {
 #define RTC_INT_PIN 18
 const char * days[7] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
 const char * months[12] = {"Janv", "Févr", "Mars", "Avri", "Mai", "Juin", "Juil", "Aout", "Sept", "Octo", "Nove", "Dece"};
+// NTP
+typedef struct NTP_T_ {
+    ip_addr_t ntp_server_address;
+    bool dns_request_sent;
+    struct udp_pcb *ntp_pcb;
+    absolute_time_t ntp_test_time;
+    alarm_id_t ntp_resend_alarm;
+} NTP_T;
+
+#define NTP_SERVER "pool.ntp.org"
+#define NTP_MSG_LEN 48
+#define NTP_PORT 123
+#define NTP_DELTA 2208988800 // seconds between 1 Jan 1900 and 1 Jan 1970
+#define NTP_TEST_TIME (30 * 1000)
+#define NTP_RESEND_TIME (10 * 1000)
+
 
 // ***** class based on Starmap ******
 class SM : public Starmap {
@@ -103,8 +114,6 @@ extern const uint16_t constellation_lines_array[3882]; // join-the-dots lines
 extern const uint16_t constellation_bound_array[2631];
 const char yale_end_string[33]="YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"; // must be 32 Y characters
 SM starmap;
-// for the png
-//char screen_ram[TFT_H][TFT_W];
 size_t nbytes; // to store number of bytes for snprintf
 // update period delay
 double starmap_update_period = DEFAULT_UPDATE_DELAY * 60;  // multiply by 60 to convert minutes to seconds
@@ -123,10 +132,13 @@ Pen col;
 uint8_t r;
 uint8_t g;
 uint8_t b;
+//ds3231
+ds3231_t ds3231;
+// NTP
+NTP_T *state;
+int received_response;
 
 // ******** function prototypes ************
-// //void write_png_image(char* filename);
-void plot_char_10_12(char c, int x, int y, int color);  // only supports N, E, S, W characters
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
 void disp_time(int hr, int min, int x, int y, int color);
 void disp_date(int year, int month, int day, int x, int y, int color);
@@ -135,7 +147,15 @@ void draw_manual_mode(int x, int y, int color);
 void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm);
 const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
-// int msleep(long msec); // already defined in pico-sdk
+
+//NTP functions definitions
+static NTP_T* ntp_init(void);
+static int64_t ntp_failed_handler(alarm_id_t id, void *user_data);
+static void ntp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg);
+static void ntp_request(NTP_T *state);
+static void ntp_result(NTP_T* state, int status, time_t *result);
+static void ntp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
+//void run_ntp_test(void);
 
 // plot_pixel
 void SM::plot_pixel(uint16_t color, int x, int y) {
@@ -170,6 +190,8 @@ int main() {
     //     k--;
     //     sleep_ms(1000);
     // }
+    printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
+
 
   double mag=5;
   rect_s br;
@@ -224,7 +246,7 @@ int main() {
         .century = 1,
         .year = 23
     };
-  ds3231_t ds3231;
+  //ds3231_t ds3231;
   /* Initiliaze ds3231 struct. */
   ds3231_init(&ds3231, i2c_default, DS3231_DEVICE_ADRESS, AT24C32_EEPROM_ADRESS_0);
   sleep_ms(200);
@@ -237,6 +259,77 @@ int main() {
   gpio_pull_up(RTC_SCL_PIN);
   i2c_init(ds3231.i2c, 400 * 1000);
   sleep_ms(200);
+
+    // NTP attempt
+    printf("trying to get updated time with NTP\n");
+    if (cyw43_arch_init()) {
+        printf("failed to initialise cyw43 arch, skipping updating the time with NTP\n");
+        //return 1;
+    }
+    cyw43_arch_enable_sta_mode();
+    printf("Trying to connect to wifi\n");
+    //cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000);
+    //printf("tentative finie");
+    //return 0;
+    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+        //cyw43_arch_poll();
+        cyw43_arch_deinit();
+        printf("failed to connect, skipping updating the time with NTP\n");
+        //return 1;
+    } else {
+        printf("Connected to wifi, setting up NTP\n");
+        int nb_attempt = 5;
+        received_response = 0;
+        state = ntp_init();
+        if (!state) {
+            //return;
+            printf("Failed to connect to NTP server, no updating RTC\n");
+        } else {
+            while(nb_attempt > 0 && !received_response) {
+                printf("Attempt to get NTP response n°%i\n", nb_attempt);
+                if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
+                    // Set alarm in case udp requests are lost
+                    state->ntp_resend_alarm = add_alarm_in_ms(NTP_RESEND_TIME, ntp_failed_handler, state, true);
+
+                    // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
+                    // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
+                    // these calls are a no-op and can be omitted, but it is a good practice to use them in
+                    // case you switch the cyw43_arch type later.
+                    cyw43_arch_lwip_begin();
+                    int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
+                    cyw43_arch_lwip_end();
+
+                    state->dns_request_sent = true;
+                    if (err == ERR_OK) {
+                        //received_response = 1;
+                        ntp_request(state); // Cached result
+                    } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
+                        printf("dns request failed\n");
+                        ntp_result(state, -1, NULL);
+                    }
+                }
+#if PICO_CYW43_ARCH_POLL
+                // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
+                // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
+                cyw43_arch_poll();
+                // you can poll as often as you like, however if you have nothing else to do you can
+                // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
+                cyw43_arch_wait_for_work_until(state->dns_request_sent ? at_the_end_of_time : state->ntp_test_time);
+#else
+                // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
+                // is done via interrupt in the background. This sleep is just an example of some (blocking)
+                // work you might be doing.
+                sleep_ms(1000);
+#endif
+                nb_attempt--;
+            }
+        }
+        free(state);
+        cyw43_arch_deinit();
+    }
+
+    //stdio_init_all(); // Initialize standard IO
+
   // Start on Friday 5th of June 2020 15:45:00
   /* Read the time registers of DS3231. */
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
@@ -434,30 +527,7 @@ void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm)
 }
 
 // ************** other functions *********************
-// plot_char_10_12 only supports N, E, S, W characters
-void plot_char_10_12(char c, int x, int y, int color) {
-  int i, j;
-  // check that the character is in the font
-  // only 0-3 are valid (N, E, S, W)
-  if (c > 3 || c < 0) {
-    return;
-  }
-
-  for (i = 0; i < 10; i++) {
-    for (j = 0; j < 12; j++) {
-      if (font10_12[c][i] & (1 << j)) {
-        graphics.set_pen(color);
-        graphics.pixel(Point(x+1,y-j));
-        //Paint_DrawPoint(x+i, y-j, color, DOT_PIXEL_1X1,DOT_FILL_AROUND);
-      } else {
-        //Paint_DrawPoint(x+i, y-j, BLACK, DOT_PIXEL_1X1,DOT_FILL_AROUND);
-        graphics.set_pen(BLACK);
-        graphics.pixel(Point(x+1,y-j));
-      }
-    }
-  }
-}
-
+// Draw N, E, S, W characters
 void draw_NESW (char c[], int x, int y, int color) {
     r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
     g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
@@ -610,6 +680,163 @@ const char *wd(int year, int month, int day) {
       ) % 7];
 }
 
+// NTP functions
+// Called with results of operation
+//extern "C" {
+static void ntp_result(NTP_T* state, int status, time_t *result) {
+    if (status == 0 && result) {
+        struct tm *utc = gmtime(result);
+        utc->tm_hour = utc->tm_hour + TIMEZONE_OFFSET;
+        mktime(utc);
+        printf("got ntp response: %02d/%02d/%04d %02d:%02d:%02d\n", utc->tm_mday, utc->tm_mon + 1, utc->tm_year + 1900,
+               utc->tm_hour, utc->tm_min, utc->tm_sec);
+        //t = mktime(&utc)
+        ds3231_data_t ds3231_data_ntp = {
+          .seconds = (uint8_t)utc->tm_sec,
+          .minutes = (uint8_t)utc->tm_min,
+          .hours = (uint8_t)(utc->tm_hour),
+          .am_pm = utc->tm_hour>12 ? true : false,
+          .day = (uint8_t)utc->tm_wday,
+          .date = (uint8_t)utc->tm_mday,
+          .month = (uint8_t)(utc->tm_mon + 1),
+          .century = 1,
+          .year = (uint8_t)(utc->tm_year - 100)
+         };
+        ds3231_configure_time(&ds3231, &ds3231_data_ntp);
+        printf("NTP time saved to DS3231!\n");
+
+    }
+
+    if (state->ntp_resend_alarm > 0) {
+        cancel_alarm(state->ntp_resend_alarm);
+        state->ntp_resend_alarm = 0;
+    }
+    state->ntp_test_time = make_timeout_time_ms(NTP_TEST_TIME);
+    state->dns_request_sent = false;
+}
+
+static int64_t ntp_failed_handler(alarm_id_t id, void *user_data);
+
+// Make an NTP request
+static void ntp_request(NTP_T *state) {
+    // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
+    // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
+    // these calls are a no-op and can be omitted, but it is a good practice to use them in
+    // case you switch the cyw43_arch type later.
+    cyw43_arch_lwip_begin();
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, NTP_MSG_LEN, PBUF_RAM);
+    uint8_t *req = (uint8_t *) p->payload;
+    memset(req, 0, NTP_MSG_LEN);
+    req[0] = 0x1b;
+    udp_sendto(state->ntp_pcb, p, &state->ntp_server_address, NTP_PORT);
+    pbuf_free(p);
+    cyw43_arch_lwip_end();
+}
+
+static int64_t ntp_failed_handler(alarm_id_t id, void *user_data)
+{
+    NTP_T* state = (NTP_T*)user_data;
+    printf("ntp request failed\n");
+    ntp_result(state, -1, NULL);
+    return 0;
+}
+
+// Call back with a DNS result
+static void ntp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg) {
+    NTP_T *state = (NTP_T*)arg;
+    if (ipaddr) {
+        state->ntp_server_address = *ipaddr;
+        printf("ntp address %s\n", ipaddr_ntoa(ipaddr));
+        ntp_request(state);
+    } else {
+        printf("ntp dns request failed\n");
+        ntp_result(state, -1, NULL);
+    }
+}
+
+// NTP data received
+static void ntp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port) {
+    NTP_T *state = (NTP_T*)arg;
+    uint8_t mode = pbuf_get_at(p, 0) & 0x7;
+    uint8_t stratum = pbuf_get_at(p, 1);
+
+    // Check the result
+    if (ip_addr_cmp(addr, &state->ntp_server_address) && port == NTP_PORT && p->tot_len == NTP_MSG_LEN &&
+        mode == 0x4 && stratum != 0) {
+        uint8_t seconds_buf[4] = {0};
+        pbuf_copy_partial(p, seconds_buf, sizeof(seconds_buf), 40);
+        uint32_t seconds_since_1900 = seconds_buf[0] << 24 | seconds_buf[1] << 16 | seconds_buf[2] << 8 | seconds_buf[3];
+        uint32_t seconds_since_1970 = seconds_since_1900 - NTP_DELTA;
+        time_t ntp_epoch = seconds_since_1970;
+        ntp_result(state, 0, &ntp_epoch);
+        received_response = 1;
+    } else {
+        printf("invalid ntp response\n");
+        ntp_result(state, -1, NULL);
+    }
+    pbuf_free(p);
+}
+
+// Perform initialisation
+static NTP_T* ntp_init(void) {
+    NTP_T *state = (NTP_T*)calloc(1, sizeof(NTP_T));
+    if (!state) {
+        printf("failed to allocate state\n");
+        return NULL;
+    }
+    state->ntp_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+    if (!state->ntp_pcb) {
+        printf("failed to create pcb\n");
+        free(state);
+        return NULL;
+    }
+    udp_recv(state->ntp_pcb, ntp_recv, state);
+    return state;
+}
+
+// Runs ntp test forever
+// void run_ntp_test(void) {
+//     NTP_T *state = ntp_init();
+//     if (!state)
+//         return;
+//     while(true) {
+//         if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
+//             // Set alarm in case udp requests are lost
+//             state->ntp_resend_alarm = add_alarm_in_ms(NTP_RESEND_TIME, ntp_failed_handler, state, true);
+
+//             // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
+//             // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
+//             // these calls are a no-op and can be omitted, but it is a good practice to use them in
+//             // case you switch the cyw43_arch type later.
+//             cyw43_arch_lwip_begin();
+//             int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
+//             cyw43_arch_lwip_end();
+
+//             state->dns_request_sent = true;
+//             if (err == ERR_OK) {
+//                 ntp_request(state); // Cached result
+//             } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
+//                 printf("dns request failed\n");
+//                 ntp_result(state, -1, NULL);
+//             }
+//         }
+// #if PICO_CYW43_ARCH_POLL
+//         // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
+//         // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
+//         cyw43_arch_poll();
+//         // you can poll as often as you like, however if you have nothing else to do you can
+//         // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
+//         cyw43_arch_wait_for_work_until(state->dns_request_sent ? at_the_end_of_time : state->ntp_test_time);
+// #else
+//         // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
+//         // is done via interrupt in the background. This sleep is just an example of some (blocking)
+//         // work you might be doing.
+//         sleep_ms(1000);
+// #endif
+//     }
+//     free(state);
+// }
+//}
 
 // ************ Yale star data *****************
 
