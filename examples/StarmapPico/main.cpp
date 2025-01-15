@@ -206,7 +206,7 @@ int main() {
   int dotw; //day of the week
   int loop; // 1 for loop of time updating running, 0 to update image
   int mode; //1 for auto mode, 0 for manual mode
-  int to_update;
+  int to_update; // when update of skymap is needed
 
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
@@ -259,6 +259,17 @@ int main() {
   gpio_pull_up(RTC_SCL_PIN);
   i2c_init(ds3231.i2c, 400 * 1000);
   sleep_ms(200);
+
+    // Start on Friday 5th of June 2020 15:45:00
+    datetime_t t_init = {
+            .year  = 20,
+            .month = 6,
+            .day   = 5,
+            .dotw  = 5, // 0 is Sunday, so 5 is Friday
+            .hour  = 15,
+            .min   = 45,
+            .sec   = 0
+  };
 
     // NTP attempt
     printf("trying to get updated time with NTP\n");
@@ -328,29 +339,45 @@ int main() {
         cyw43_arch_deinit();
     }
 
-    //stdio_init_all(); // Initialize standard IO
-
-  // Start on Friday 5th of June 2020 15:45:00
+  // // Start on Friday 5th of June 2020 15:45:00
+  //   datetime_t t_init = {
+  //           .year  = 20,
+  //           .month = 6,
+  //           .day   = 5,
+  //           .dotw  = 5, // 0 is Sunday, so 5 is Friday
+  //           .hour  = 15,
+  //           .min   = 45,
+  //           .sec   = 0
+  // };
   /* Read the time registers of DS3231. */
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
-      printf("No data is received\nReverting to default time");
+      printf("DS3231 not available, reverting to default time\n");
 
       } else {
           dotw = ds3231_data.day == 0 ? 6 : ds3231_data.day - 1;
           printf("Time read from RTC DS3231 : %02u:%02u:%02u    %10s    %02u/%02u/20%02u\n",
              ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
              days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
+
+          t_init.year = (int8_t)ds3231_data.year;
+          t_init.month = (int8_t)ds3231_data.month;
+          t_init.day = (int8_t)ds3231_data.date;
+          t_init.dotw = (int8_t)dotw;
+          t_init.hour = (int8_t)ds3231_data.hours;
+          t_init.min = (int8_t)ds3231_data.minutes;
+          t_init.sec = (int8_t)ds3231_data.seconds;
+
   }
 
-  datetime_t t_init = {
-            .year  = (int8_t)ds3231_data.year,
-            .month = (int8_t)ds3231_data.month,
-            .day   = (int8_t)ds3231_data.date,
-            .dotw  = (int8_t)dotw, // 0 is Sunday, so 5 is Friday
-            .hour  = (int8_t)ds3231_data.hours,
-            .min   = (int8_t)ds3231_data.minutes,
-            .sec   = (int8_t)ds3231_data.seconds
-  };
+  // datetime_t t_init = {
+  //           .year  = (int8_t)ds3231_data.year,
+  //           .month = (int8_t)ds3231_data.month,
+  //           .day   = (int8_t)ds3231_data.date,
+  //           .dotw  = (int8_t)dotw, // 0 is Sunday, so 5 is Friday
+  //           .hour  = (int8_t)ds3231_data.hours,
+  //           .min   = (int8_t)ds3231_data.minutes,
+  //           .sec   = (int8_t)ds3231_data.seconds
+  // };
 
   // Start the RTC
   rtc_init();
