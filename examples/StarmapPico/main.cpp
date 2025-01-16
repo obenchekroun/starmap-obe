@@ -321,84 +321,85 @@ int main() {
         graphics.text("Failed to initialise cyw43 arch, skipping NTP", Point(5,70), 240, 1);
         st7789.update(&graphics);
         //return 1;
-    }
-    cyw43_arch_enable_sta_mode();
-    printf("Trying to connect to wifi\n");
-    graphics.set_pen(WHITE);
-    graphics.text("Trying to connect to wifi", Point(5,80), 240, 1);
-    st7789.update(&graphics);
-
-    //cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000);
-    //printf("tentative finie");
-    //return 0;
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
-        //cyw43_arch_poll();
-        cyw43_arch_deinit();
-        printf("Failed to connect to wifi, skipping updating the time with NTP\n");
-        graphics.set_pen(RED);
-        graphics.text("Failed to connect to wifi, skipping NTP", Point(5,90), 240, 1);
-        st7789.update(&graphics);
-        //return 1;
     } else {
-        printf("Connected to wifi, setting up NTP...\n");
-        graphics.set_pen(GREEN);
-        graphics.text("Connected to wifi, setting up NTP ...", Point(5,100), 240, 1);
+        cyw43_arch_enable_sta_mode();
+        printf("Trying to connect to wifi\n");
+        graphics.set_pen(WHITE);
+        graphics.text("Trying to connect to wifi", Point(5,70), 240, 1);
         st7789.update(&graphics);
 
-        int nb_attempt = 5;
-        received_response = 0;
-        state = ntp_init();
-        if (!state) {
-            //return;
-            printf("Failed to connect to NTP server, no updating RTC\n");
+        //cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000);
+        //printf("tentative finie");
+        //return 0;
+        if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+            //cyw43_arch_poll();
+            cyw43_arch_deinit();
+            printf("Failed to connect to wifi, skipping updating the time with NTP\n");
             graphics.set_pen(RED);
-            graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,110), 240, 1);
+            graphics.text("Failed to connect to wifi, skipping NTP", Point(5,80), 240, 1);
             st7789.update(&graphics);
+            //return 1;
         } else {
-            graphics.set_pen(WHITE);
-            graphics.text("Attempt to get NTP response...", Point(5,120), 240, 1);
+            printf("Connected to wifi, setting up NTP...\n");
+            graphics.set_pen(GREEN);
+            graphics.text("Connected to wifi, setting up NTP ...", Point(5,80), 240, 1);
             st7789.update(&graphics);
-            while(nb_attempt > 0 && !received_response) {
-                printf("Attempt to get NTP response n°%i\n", nb_attempt);
-                if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
-                    // Set alarm in case udp requests are lost
-                    state->ntp_resend_alarm = add_alarm_in_ms(NTP_RESEND_TIME, ntp_failed_handler, state, true);
 
-                    // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
-                    // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
-                    // these calls are a no-op and can be omitted, but it is a good practice to use them in
-                    // case you switch the cyw43_arch type later.
-                    cyw43_arch_lwip_begin();
-                    int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
-                    cyw43_arch_lwip_end();
+            int nb_attempt = 5;
+            received_response = 0;
+            state = ntp_init();
+            if (!state) {
+                //return;
+                printf("Failed to connect to NTP server, no updating RTC\n");
+                graphics.set_pen(RED);
+                graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,90), 240, 1);
+                st7789.update(&graphics);
+            } else {
+                graphics.set_pen(WHITE);
+                graphics.text("Attempt to get NTP response...", Point(5,90), 240, 1);
+                st7789.update(&graphics);
+                while(nb_attempt > 0 && !received_response) {
+                    printf("Attempt to get NTP response n°%i\n", nb_attempt);
+                    if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
+                        // Set alarm in case udp requests are lost
+                        state->ntp_resend_alarm = add_alarm_in_ms(NTP_RESEND_TIME, ntp_failed_handler, state, true);
 
-                    state->dns_request_sent = true;
-                    if (err == ERR_OK) {
-                        //received_response = 1;
-                        ntp_request(state); // Cached result
-                    } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
-                        printf("dns request failed\n");
-                        ntp_result(state, -1, NULL);
+                        // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
+                        // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
+                        // these calls are a no-op and can be omitted, but it is a good practice to use them in
+                        // case you switch the cyw43_arch type later.
+                        cyw43_arch_lwip_begin();
+                        int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
+                        cyw43_arch_lwip_end();
+
+                        state->dns_request_sent = true;
+                        if (err == ERR_OK) {
+                            //received_response = 1;
+                            ntp_request(state); // Cached result
+                        } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
+                            printf("dns request failed\n");
+                            ntp_result(state, -1, NULL);
+                        }
                     }
-                }
 #if PICO_CYW43_ARCH_POLL
-                // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
-                // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
-                cyw43_arch_poll();
-                // you can poll as often as you like, however if you have nothing else to do you can
-                // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
-                cyw43_arch_wait_for_work_until(state->dns_request_sent ? at_the_end_of_time : state->ntp_test_time);
+                    // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
+                    // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
+                    cyw43_arch_poll();
+                    // you can poll as often as you like, however if you have nothing else to do you can
+                    // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
+                    cyw43_arch_wait_for_work_until(state->dns_request_sent ? at_the_end_of_time : state->ntp_test_time);
 #else
-                // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
-                // is done via interrupt in the background. This sleep is just an example of some (blocking)
-                // work you might be doing.
-                sleep_ms(1000);
+                    // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
+                    // is done via interrupt in the background. This sleep is just an example of some (blocking)
+                    // work you might be doing.
+                    sleep_ms(1000);
 #endif
-                nb_attempt--;
+                    nb_attempt--;
+                }
             }
+            free(state);
+            cyw43_arch_deinit();
         }
-        free(state);
-        cyw43_arch_deinit();
     }
 #endif
   // // Start on Friday 5th of June 2020 15:45:00
@@ -415,7 +416,7 @@ int main() {
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
       printf("DS3231 not available, reverting to default time\n");
       graphics.set_pen(RED);
-      graphics.text("DS3231 not available, reverting to default time", Point(5,140), 240, 1);
+      graphics.text("DS3231 not available, reverting to default time", Point(5,110), 240, 1);
       st7789.update(&graphics);
 
       } else {
@@ -424,7 +425,7 @@ int main() {
              ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
              days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
           graphics.set_pen(GREEN);
-          graphics.text("Time obtained from DS3231!", Point(5,150), 240, 1);
+          graphics.text("Time obtained from DS3231!", Point(5,110), 240, 1);
           st7789.update(&graphics);
 
           t_init.year = (int8_t)ds3231_data.year;
@@ -469,7 +470,7 @@ int main() {
   to_update = 1;
 
   graphics.set_pen(WHITE);
-  graphics.text("Beginning loop!", Point(5,160), 240, 1);
+  graphics.text("Beginning loop!", Point(5,120), 240, 1);
   st7789.update(&graphics);
 
   while(FOREVER){
@@ -804,7 +805,7 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         ds3231_configure_time(&ds3231, &ds3231_data_ntp);
         printf("NTP time saved to DS3231!\n");
         graphics.set_pen(GREEN);
-        graphics.text("NTP time saved to DS3231!", Point(5,130), 240, 1);
+        graphics.text("NTP time saved to DS3231!", Point(5,100), 240, 1);
         st7789.update(&graphics);
 
     }
