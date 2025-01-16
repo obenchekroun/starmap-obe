@@ -317,7 +317,7 @@ sudo ./main 1.28
 - Pimoroni Display Pack 2.0
 - DS3231 RTC module. Adafruit has a compact one [link](https://www.adafruit.com/product/3013), but any can do. *NB: PiSugar has an RTC embedded*.
 
-This build uses wi-fi capabilities to set DS3231 time when wifi is available through NTP.
+The build also uses wi-fi capabilities to set DS3231 time when wifi is available through NTP. By default, this is on but can be switched off by removing any definition of  `WITH_NTP`. See building for how to.
 
 ###  Dependencies
 The firmware can be built on any linux machine. You need to set up the pico-SDK :
@@ -374,11 +374,14 @@ MEMORY
 ```
 
 - Timezone offset for the NTP, in `main.cpp` : 
-
 ``` c++
 #define TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
 ```
 
+- To define the use of NTP (and need of wi-fi capabilities), you can either :
+    - add or remove`#define WITH_NTP 1` in the beginning of `main.cpp`
+    - put`-DWITH_NTP=1` to `add_definitions(-DLINUX_BUILD=1 -DPICO_CYW43_SUPPORTED=1 -DWITH_NTP=1)` in `CMakeLists.txt`. This is the default on the current code
+    
 Then building it is done with :
 ```
 cd starmap-obe/examples/StarmapPico

@@ -24,11 +24,13 @@ extern "C" {
    #include "ds3231.h"
 }
 // NTP client
-#include "pico/cyw43_arch.h"
+#ifdef WITH_NTP
+   #include "pico/cyw43_arch.h"
 
-#include "lwip/dns.h"
-#include "lwip/pbuf.h"
-#include "lwip/udp.h"
+   #include "lwip/dns.h"
+   #include "lwip/pbuf.h"
+   #include "lwip/udp.h"
+#endif
 
 // Display libraries
 #include "libraries/pico_display_2/pico_display_2.hpp"
@@ -82,6 +84,7 @@ using namespace pimoroni;
 const char * days[7] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
 const char * months[12] = {"Janv", "Févr", "Mars", "Avri", "Mai", "Juin", "Juil", "Aout", "Sept", "Octo", "Nove", "Dece"};
 // NTP
+#ifdef WITH_NTP
 typedef struct NTP_T_ {
     ip_addr_t ntp_server_address;
     bool dns_request_sent;
@@ -96,7 +99,7 @@ typedef struct NTP_T_ {
 #define NTP_DELTA 2208988800 // seconds between 1 Jan 1900 and 1 Jan 1970
 #define NTP_TEST_TIME (30 * 1000)
 #define NTP_RESEND_TIME (10 * 1000)
-
+#endif
 
 // ***** class based on Starmap ******
 class SM : public Starmap {
@@ -128,16 +131,19 @@ Button button_y(PicoDisplay2::Y);
 Pen BG;
 Pen WHITE;
 Pen BLACK;
+Pen GREEN;
+Pen RED;
 Pen col;
 uint8_t r;
 uint8_t g;
 uint8_t b;
 //ds3231
 ds3231_t ds3231;
+#ifdef WITH_NTP
 // NTP
 NTP_T *state;
 int received_response;
-
+#endif
 // ******** function prototypes ************
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
 void disp_time(int hr, int min, int x, int y, int color);
@@ -149,6 +155,7 @@ const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
 
 //NTP functions definitions
+#ifdef WITH_NTP
 static NTP_T* ntp_init(void);
 static int64_t ntp_failed_handler(alarm_id_t id, void *user_data);
 static void ntp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg);
@@ -156,6 +163,7 @@ static void ntp_request(NTP_T *state);
 static void ntp_result(NTP_T* state, int status, time_t *result);
 static void ntp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
 //void run_ntp_test(void);
+#endif
 
 // plot_pixel
 void SM::plot_pixel(uint16_t color, int x, int y) {
@@ -231,8 +239,31 @@ int main() {
   starmap.col_celest_eq_text = SM_COL_CELEST_EQ_TEXT;
   starmap.col_bayerf_text = SM_COL_TEXT_GENERIC;
 
+  // Setting up the screen
+  printf("Setting up the screen!\n");
+  BLACK = graphics.create_pen(0, 0, 0);
+  WHITE = graphics.create_pen(255, 255, 255);
+  RED = graphics.create_pen(255, 0, 0);
+  GREEN = graphics.create_pen(0, 255, 0);
+  graphics.set_pen(BLACK);
+  graphics.clear();
+  st7789.update(&graphics);
+  led.set_rgb(200, 200, 200);
+  printf("Screen Setup\r\n");
+  //sleep_ms(10000);
+
+  graphics.set_pen(WHITE);
+  graphics.set_font(&font8);
+  graphics.text("Starmap", Point(70,10), 240, 3);
+  st7789.update(&graphics);
+  //sleep_ms(10000);
+
+
   // initializing RTC
   printf("Initialising DS3231 ...\n");
+  graphics.set_pen(WHITE);
+  graphics.text("Initialising DS3231 ...", Point(5,40), 240, 1);
+  st7789.update(&graphics);
   char datetime_buf[256];
   /* Define structure to get time */
     ds3231_data_t ds3231_data = {
@@ -271,31 +302,62 @@ int main() {
             .sec   = 0
   };
 
+      printf("DS3231 initialized !\n");
+      graphics.set_pen(GREEN);
+      graphics.text("DS3231 initialized !", Point(5,50), 240, 1);
+      st7789.update(&graphics);
+
+#ifdef WITH_NTP
     // NTP attempt
-    printf("trying to get updated time with NTP\n");
+    graphics.set_pen(WHITE);
+    printf("Trying to get updated time with NTP\n");
+    graphics.text("Trying to get updated time with NTP", Point(5,60), 240, 1);
+    st7789.update(&graphics);
+    //sleep_ms(10000);
+
     if (cyw43_arch_init()) {
         printf("failed to initialise cyw43 arch, skipping updating the time with NTP\n");
+        graphics.set_pen(RED);
+        graphics.text("Failed to initialise cyw43 arch, skipping NTP", Point(5,70), 240, 1);
+        st7789.update(&graphics);
         //return 1;
     }
     cyw43_arch_enable_sta_mode();
     printf("Trying to connect to wifi\n");
+    graphics.set_pen(WHITE);
+    graphics.text("Trying to connect to wifi", Point(5,80), 240, 1);
+    st7789.update(&graphics);
+
     //cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000);
     //printf("tentative finie");
     //return 0;
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
         //cyw43_arch_poll();
         cyw43_arch_deinit();
-        printf("failed to connect, skipping updating the time with NTP\n");
+        printf("Failed to connect to wifi, skipping updating the time with NTP\n");
+        graphics.set_pen(RED);
+        graphics.text("Failed to connect to wifi, skipping NTP", Point(5,90), 240, 1);
+        st7789.update(&graphics);
         //return 1;
     } else {
-        printf("Connected to wifi, setting up NTP\n");
+        printf("Connected to wifi, setting up NTP...\n");
+        graphics.set_pen(GREEN);
+        graphics.text("Connected to wifi, setting up NTP ...", Point(5,100), 240, 1);
+        st7789.update(&graphics);
+
         int nb_attempt = 5;
         received_response = 0;
         state = ntp_init();
         if (!state) {
             //return;
             printf("Failed to connect to NTP server, no updating RTC\n");
+            graphics.set_pen(RED);
+            graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,110), 240, 1);
+            st7789.update(&graphics);
         } else {
+            graphics.set_pen(WHITE);
+            graphics.text("Attempt to get NTP response...", Point(5,120), 240, 1);
+            st7789.update(&graphics);
             while(nb_attempt > 0 && !received_response) {
                 printf("Attempt to get NTP response n°%i\n", nb_attempt);
                 if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
@@ -338,7 +400,7 @@ int main() {
         free(state);
         cyw43_arch_deinit();
     }
-
+#endif
   // // Start on Friday 5th of June 2020 15:45:00
   //   datetime_t t_init = {
   //           .year  = 20,
@@ -352,12 +414,18 @@ int main() {
   /* Read the time registers of DS3231. */
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
       printf("DS3231 not available, reverting to default time\n");
+      graphics.set_pen(RED);
+      graphics.text("DS3231 not available, reverting to default time", Point(5,140), 240, 1);
+      st7789.update(&graphics);
 
       } else {
           dotw = ds3231_data.day == 0 ? 6 : ds3231_data.day - 1;
           printf("Time read from RTC DS3231 : %02u:%02u:%02u    %10s    %02u/%02u/20%02u\n",
              ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
              days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
+          graphics.set_pen(GREEN);
+          graphics.text("Time obtained from DS3231!", Point(5,150), 240, 1);
+          st7789.update(&graphics);
 
           t_init.year = (int8_t)ds3231_data.year;
           t_init.month = (int8_t)ds3231_data.month;
@@ -386,19 +454,23 @@ int main() {
   // The delay is up to 3 RTC clock cycles (which is 64us with the default clock settings)
   sleep_us(64);
 
-  // Setting up the screen
-  printf("Setting up the screen!\n");
-  BLACK = graphics.create_pen(0, 0, 0);
-  WHITE = graphics.create_pen(255, 255, 255);
-  graphics.set_pen(BLACK);
-  graphics.clear();
-  st7789.update(&graphics);
-  led.set_rgb(200, 200, 200);
-  printf("Screen Setup\r\n");
-  //sleep_ms(10000);
+  // // Setting up the screen
+  // printf("Setting up the screen!\n");
+  // BLACK = graphics.create_pen(0, 0, 0);
+  // WHITE = graphics.create_pen(255, 255, 255);
+  // graphics.set_pen(BLACK);
+  // graphics.clear();
+  // st7789.update(&graphics);
+  // led.set_rgb(200, 200, 200);
+  // printf("Screen Setup\r\n");
+  // //sleep_ms(10000);
 
   mode = 1 ;
   to_update = 1;
+
+  graphics.set_pen(WHITE);
+  graphics.text("Beginning loop!", Point(5,160), 240, 1);
+  st7789.update(&graphics);
 
   while(FOREVER){
       // switching mode with buttons
@@ -707,9 +779,9 @@ const char *wd(int year, int month, int day) {
       ) % 7];
 }
 
+#ifdef WITH_NTP
 // NTP functions
 // Called with results of operation
-//extern "C" {
 static void ntp_result(NTP_T* state, int status, time_t *result) {
     if (status == 0 && result) {
         struct tm *utc = gmtime(result);
@@ -731,6 +803,9 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
          };
         ds3231_configure_time(&ds3231, &ds3231_data_ntp);
         printf("NTP time saved to DS3231!\n");
+        graphics.set_pen(GREEN);
+        graphics.text("NTP time saved to DS3231!", Point(5,130), 240, 1);
+        st7789.update(&graphics);
 
     }
 
@@ -820,50 +895,8 @@ static NTP_T* ntp_init(void) {
     udp_recv(state->ntp_pcb, ntp_recv, state);
     return state;
 }
+#endif
 
-// Runs ntp test forever
-// void run_ntp_test(void) {
-//     NTP_T *state = ntp_init();
-//     if (!state)
-//         return;
-//     while(true) {
-//         if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
-//             // Set alarm in case udp requests are lost
-//             state->ntp_resend_alarm = add_alarm_in_ms(NTP_RESEND_TIME, ntp_failed_handler, state, true);
-
-//             // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
-//             // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
-//             // these calls are a no-op and can be omitted, but it is a good practice to use them in
-//             // case you switch the cyw43_arch type later.
-//             cyw43_arch_lwip_begin();
-//             int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
-//             cyw43_arch_lwip_end();
-
-//             state->dns_request_sent = true;
-//             if (err == ERR_OK) {
-//                 ntp_request(state); // Cached result
-//             } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
-//                 printf("dns request failed\n");
-//                 ntp_result(state, -1, NULL);
-//             }
-//         }
-// #if PICO_CYW43_ARCH_POLL
-//         // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
-//         // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
-//         cyw43_arch_poll();
-//         // you can poll as often as you like, however if you have nothing else to do you can
-//         // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
-//         cyw43_arch_wait_for_work_until(state->dns_request_sent ? at_the_end_of_time : state->ntp_test_time);
-// #else
-//         // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
-//         // is done via interrupt in the background. This sleep is just an example of some (blocking)
-//         // work you might be doing.
-//         sleep_ms(1000);
-// #endif
-//     }
-//     free(state);
-// }
-//}
 
 // ************ Yale star data *****************
 

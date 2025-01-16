@@ -21,7 +21,7 @@ set(PICO_BOARD pico_w)
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
 
 # Definitions for compiler
-add_definitions(-DLINUX_BUILD=1 -DPICO_CYW43_SUPPORTED=1) # #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
+add_definitions(-DLINUX_BUILD=1 -DPICO_CYW43_SUPPORTED=1 -DWITH_NTP=1) # #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -63,6 +63,7 @@ pico_enable_stdio_uart(${PROJECT_NAME} 0)
 # Link the Pico SDK to your project
 target_link_libraries(${PROJECT_NAME} pico_stdlib hardware_spi hardware_pwm hardware_pio hardware_dma rgbled button pico_display_2 st7789 pico_graphics hardware_rtc pico_ds3231 pico_cyw43_arch_lwip_threadsafe_background
 )
+
 
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(${PROJECT_NAME})
