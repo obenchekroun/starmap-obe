@@ -219,11 +219,11 @@ int main() {
     // }
     printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
 
-  rect_s br;
-  int i, j;
-  double lat, lon;
-  int hr, min;
-  int old_min = -1;
+  rect_s br; // rect used to paint the sky
+  //int i, j;
+  double lat, lon; // storing lat and longitude
+  int hr, min; // storing hour and min
+  int old_min = -1; // storing old min in order to now if the date has to be updated
   tm_t mytime; // for setting time of Starmap object
   time_t t; // get current time from system
   time_t ts; // timestamp to check if period delay of update has passed
