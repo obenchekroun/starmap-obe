@@ -83,6 +83,15 @@ Starmap::Starmap()
   col_bayerf_text = DEFAULT_COL_TEXT_GENERIC;
   col_celest_eq_text = DEFAULT_COL_TEXT_GENERIC;
   col_ecliptic_text = DEFAULT_COL_TEXT_GENERIC;
+
+  //planets colors
+  int col_mercury = DEFAULT_COL_MERCURY;
+  int col_venus = DEFAULT_COL_VENUS;
+  int col_mars = DEFAULT_COL_MARS;
+  int col_jupiter = DEFAULT_COL_SATURN;
+  int col_saturn = DEFAULT_COL_JUPITER;
+  int col_uranus = DEFAULT_COL_URANUS;
+  int col_neptune = DEFAULT_COL_NEPTUNE;
   
 
 }
@@ -2766,6 +2775,7 @@ mydeb=0x21;
 					//DrawIcon(hDC, vx - 16, vy - 13, micon);
 					DrawMoon(vx, vy, mage);
 				} else {
+					DrawPlanet(vx,vy,DEFAULT_COL_MERCURY);
 					// DrawIcon(hDC, vx - 16, vy - 16, PlanetIcon(i));
 				}
 			}
@@ -3120,6 +3130,39 @@ void Starmap::DrawMoon(int x, int y, int age)
             }
         }
     }
+}
+
+void Starmap::DrawPlanet(int x, int y, int col)
+{
+	//int phase;
+	int i, j;
+
+	//phase = (age + 2) % 30;
+    //phase = (phase * 8) / 30;
+
+    // for (i=0; i<7; i++) {
+    //     for (j=0; j<7; j++) {
+    //         if (moonphtext[phase][i] & (1 << j)) {
+    //             plot_pixel(col_moon_phtext, x+i-3, y-j+3);
+    //         } else {
+    //             if (moonbright[i] & (1 << j)) {
+    //                 plot_pixel(col_moon_bright, x+i-3, y-j+3);
+    //             }
+    //             if (moondim[i] & (1 << j)) {
+    //                 plot_pixel(col_moon_dim, x+i-3, y-j+3);
+    //             }
+    //             if (moondark[i] & (1 << j)) {
+    //                 plot_pixel(col_moon_dark, x+i-3, y-j+3);
+    //             }
+    //         }
+    //     }
+    // }
+
+    for (i=0; i<7; i++) {
+        for (j=0; j<7; j++) {
+			plot_pixel(col, x+i-3, y-j+3);
+		}
+	}
 }
 
 void Starmap::DrawStar(int x, int y, int level)

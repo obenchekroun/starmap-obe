@@ -33,6 +33,14 @@
 #define DEFAULT_COL_MOON_DARK 0x01ff
 #define DEFAULT_COL_MOON_PHTEXT 0x00ff
 #define DEFAULT_COL_TEXT_GENERIC 0x00ff
+/* planets colors */
+#define DEFAULT_COL_MERCURY    0xa55f
+#define DEFAULT_COL_VENUS      0xa55f
+#define DEFAULT_COL_MARS       0xa55f
+#define DEFAULT_COL_JUPITER    0xa55f
+#define DEFAULT_COL_SATURN     0xa55f
+#define DEFAULT_COL_URANUS     0xa55f
+#define DEFAULT_COL_NEPTUNE    0xa55f
 /*  Astronomical constants  */
 #define epoch	    2444238.5	   /* 1980 January 0.0 */
 /*  Constants defining the Sun's apparent orbit  */
@@ -237,6 +245,7 @@ class Starmap
     void jyear(double td, long *yy, int *mm, int *dd);
     void plot_char(char c, int x, int y, int color);
     void DrawMoon(int x, int y, int age);
+    void DrawPlanet(int x, int y, int col);
 
     virtual void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
     virtual void plot_pixel(uint16_t color, int x, int y);
@@ -268,6 +277,15 @@ class Starmap
     int col_bayerf_text;
     int col_celest_eq_text;
     int col_ecliptic_text;
+
+    // colors for the planets
+    int col_mercury;
+    int col_venus;
+    int col_mars;
+    int col_jupiter;
+    int col_saturn;
+    int col_uranus;
+    int col_neptune;
 
     // flags
     char do_constellation_text;
