@@ -73,10 +73,26 @@ using namespace pimoroni;
 #define WHITE_COLOR              0xffff
 #define LILAC_COLOR              0xbcbc
 #define RED_COLOR                0xf800
-
+#define GREEN_COLOR              0x07e0
+#define BLUE_COLOR               0x001f
+#define MILD_GREEN_COLOR         0x2689
 #define NESW_COLOR               0xf800
+//Positions of text
+#define X_POS_TIME        160
+#define Y_POS_TIME        280
+#define X_POS_LAT_LON     5
+#define Y_POS_LAT_LON     10
+#define X_POS_DATE        5
+#define Y_POS_DATE        303
+#define X_POS_MANUAL      10
+#define Y_POS_MANUAL      280
+#define X_POS_MAGN        160
+#define Y_POS_MAGN        30
+#define X_POS_TIME_OFFSET 190
+#define Y_POS_TIME_OFFSET 300
 
 #define DEFAULT_UPDATE_DELAY 5 // in minutes
+
 // DS3231 HW RTC definition
 #define RTC_SDA_PIN 0
 #define RTC_SCL_PIN 1
@@ -120,6 +136,7 @@ SM starmap;
 size_t nbytes; // to store number of bytes for snprintf
 // update period delay
 double starmap_update_period = DEFAULT_UPDATE_DELAY * 60;  // multiply by 60 to convert minutes to seconds
+double mag; // magnitude shown
 // for the display
 ST7789 st7789(320, 240, ROTATE_90, false, get_spi_pins(BG_SPI_FRONT));
 PicoGraphics_PenRGB565 graphics(st7789.width, st7789.height, nullptr);
@@ -148,8 +165,10 @@ int received_response;
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
 void disp_time(int hr, int min, int x, int y, int color);
 void disp_date(int year, int month, int day, int x, int y, int color);
-void draw_NESW (char c[], int x, int y, int color);
-void draw_manual_mode(int x, int y, int color);
+void disp_NESW (char c[], int x, int y, int color);
+void disp_manual_mode(int x, int y, int color);
+void disp_magnitude(double magnitude, int x, int y, int color);
+void disp_time_offset(int offset, int x, int y, int color);
 void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm);
 const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
@@ -200,8 +219,6 @@ int main() {
     // }
     printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
 
-
-  double mag=5;
   rect_s br;
   int i, j;
   double lat, lon;
@@ -215,12 +232,16 @@ int main() {
   int loop; // 1 for loop of time updating running, 0 to update image
   int mode; //1 for auto mode, 0 for manual mode
   int to_update; // when update of skymap is needed
+  int button_a_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
+  int button_b_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
+  int8_t current_time_offset; // keeping the time offset when pressing the buttons
 
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
 
   starmap.siteLat = DEFAULT_LAT; // casablanca, Morocco
   starmap.siteLon = DEFAULT_LON; // Casablanca, Morocco
+  mag = 5;
 
   // Overrides some of the default colors
   starmap.col_coord_grid = SM_COL_COORD_GRID;
@@ -402,16 +423,7 @@ int main() {
         }
     }
 #endif
-  // // Start on Friday 5th of June 2020 15:45:00
-  //   datetime_t t_init = {
-  //           .year  = 20,
-  //           .month = 6,
-  //           .day   = 5,
-  //           .dotw  = 5, // 0 is Sunday, so 5 is Friday
-  //           .hour  = 15,
-  //           .min   = 45,
-  //           .sec   = 0
-  // };
+
   /* Read the time registers of DS3231. */
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
       printf("DS3231 not available, reverting to default time\n");
@@ -438,16 +450,6 @@ int main() {
 
   }
 
-  // datetime_t t_init = {
-  //           .year  = (int8_t)ds3231_data.year,
-  //           .month = (int8_t)ds3231_data.month,
-  //           .day   = (int8_t)ds3231_data.date,
-  //           .dotw  = (int8_t)dotw, // 0 is Sunday, so 5 is Friday
-  //           .hour  = (int8_t)ds3231_data.hours,
-  //           .min   = (int8_t)ds3231_data.minutes,
-  //           .sec   = (int8_t)ds3231_data.seconds
-  // };
-
   // Start the RTC
   rtc_init();
   rtc_set_datetime(&t_init);
@@ -455,45 +457,64 @@ int main() {
   // The delay is up to 3 RTC clock cycles (which is 64us with the default clock settings)
   sleep_us(64);
 
-  // // Setting up the screen
-  // printf("Setting up the screen!\n");
-  // BLACK = graphics.create_pen(0, 0, 0);
-  // WHITE = graphics.create_pen(255, 255, 255);
-  // graphics.set_pen(BLACK);
-  // graphics.clear();
-  // st7789.update(&graphics);
-  // led.set_rgb(200, 200, 200);
-  // printf("Screen Setup\r\n");
-  // //sleep_ms(10000);
-
-  mode = 1 ;
-  to_update = 1;
+  // variables needed for looping
+  mode = 1 ; // mode 1 is the loop on current time, mode 0 is the manual mode
+  to_update = 1; // 1 means that the sky calculation needs to be updated and screen refreshed
+  button_a_pressed = 0; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
+  button_b_pressed = 0; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
+  current_time_offset = 0;
 
   graphics.set_pen(WHITE);
   graphics.text("Beginning loop!", Point(5,120), 240, 1);
   st7789.update(&graphics);
 
   while(FOREVER){
-      // switching mode with buttons
-      if(button_x.raw()) {
-         mode = 0;
-         to_update = 1;
-         led.set_rgb(255, 0, 0);
-      }
-
-      if(button_y.raw()) {
-          mode = 1;
+      // switching mode with button X
+      if(button_x.raw()) { // Switching mode
+          mode = !mode;
           to_update = 1;
-          led.set_rgb(200, 200, 200);
+          if (!mode) {
+              led.set_rgb(255, 0, 0);
+          } else {
+              led.set_rgb(200, 200, 200);
+          }
       }
 
-      if(button_a.raw() && !mode) {
-          tm.tm_hour = tm.tm_hour-2;
+      // Button y allows cycling throug magnitudes
+      if(button_y.raw()) { // cycling through the magnitudes
+          to_update = 1;
+          mag = (mag++ <= 5) ? mag : -1;
+      }
+
+      // Button A and B allows to -1 or +1 resp .the current hour
+      // to avoid lagging, we wait for the release of the button in order to update the sky
+      // we paint the current offset on the screen
+      while (button_a.raw() && !mode && abs(current_time_offset) < 127) {
+          tm.tm_hour = tm.tm_hour-1;
+          current_time_offset = current_time_offset - 1;
+          disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, RED_COLOR);
+          st7789.update(&graphics);
+          button_a_pressed = 1;
+          sleep_ms(200);
+      }
+      if (!button_a.raw() && !mode && button_a_pressed) {
+          button_a_pressed = 0;
+          current_time_offset = 0;
           mktime(&tm);
           to_update = 1;
       }
-      if(button_b.raw() && !mode) {
-          tm.tm_hour = tm.tm_hour+2;
+
+      while (button_b.raw() && !mode && abs(current_time_offset) < 127) {
+          tm.tm_hour = tm.tm_hour+1;
+          current_time_offset = current_time_offset + 1;
+          disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, GREEN_COLOR);
+          st7789.update(&graphics);
+          button_b_pressed = 1;
+          sleep_ms(200);
+      }
+      if (!button_b.raw() && !mode && button_b_pressed) {
+          button_b_pressed = 0;
+          current_time_offset = 0;
           mktime(&tm);
           to_update = 1;
       }
@@ -541,22 +562,24 @@ int main() {
           starmap.paintSky(mag, &br);
 
           // Draw compass on screen
-          draw_NESW((char*)"N", 115,30,NESW_COLOR);
-          draw_NESW((char*)"E", 10,155,NESW_COLOR);
-          draw_NESW((char*)"S", 115,270,NESW_COLOR);
-          draw_NESW((char*)"W", 224,155,NESW_COLOR);
+          disp_NESW((char*)"N", 115,30,NESW_COLOR);
+          disp_NESW((char*)"E", 10,155,NESW_COLOR);
+          disp_NESW((char*)"S", 115,270,NESW_COLOR);
+          disp_NESW((char*)"W", 224,155,NESW_COLOR);
 
           // Draw lat and long on screen
           lat = starmap.siteLat;
           lon = starmap.siteLon;
-          disp_lat_lon(lat, lon, 5, 10, LILAC_COLOR);
+          disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, LILAC_COLOR);
           // Draw time on screen
-          disp_time(hr, min, 170, 270, WHITE_COLOR);
+          disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
           // Draw date
-          disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, 5, 303, GOLD_COLOR);
+          disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
+          //draw magnitude
+          disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, MILD_GREEN_COLOR);
           // draw MANUAL
           if (!mode) {
-              draw_manual_mode(10,280,RED_COLOR);
+              disp_manual_mode(X_POS_MANUAL,Y_POS_MANUAL,RED_COLOR);
           }
 
           // update the screen
@@ -588,24 +611,35 @@ int main() {
               // Draw lat and long on screen
               lat = starmap.siteLat;
               lon = starmap.siteLon;
-              disp_lat_lon(lat, lon, 5, 10, LILAC_COLOR);
+              disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, LILAC_COLOR);
               // Draw time
-              disp_time(hr, min, 170, 270, WHITE_COLOR);
+              disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
               // Draw date
-              disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, 5, 303, GOLD_COLOR);
+              disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
+              //draw magnitude
+              disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, MILD_GREEN_COLOR);
               // Displaying the image
               st7789.update(&graphics);
           }
           // switching mode with buttons
-          if(button_x.raw()) {
-              mode = 0;
+          if(button_x.raw()) { // switching mode
+              //mode = 0;
+              loop = 0;
+              mode = !mode;
               to_update = 1;
-              led.set_rgb(255, 0, 0);
+              if (!mode) {
+                  led.set_rgb(255, 0, 0);
+              } else {
+                  led.set_rgb(200, 200, 200);
+              }
+              //led.set_rgb(255, 0, 0);
           }
-          if(button_y.raw()) {
-              mode = 1;
+          if(button_y.raw()) { // cycling through the magnitudes
+              //mode = 1;
+              loop = 0;
               to_update = 1;
-              led.set_rgb(200, 200, 200);
+              mag = (mag++ <= 5) ? mag : -1;
+              //led.set_rgb(200, 200, 200);
           }
 
           //printf("in small loop\n");
@@ -628,7 +662,7 @@ void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm)
 
 // ************** other functions *********************
 // Draw N, E, S, W characters
-void draw_NESW (char c[], int x, int y, int color) {
+void disp_NESW (char c[], int x, int y, int color) {
     r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
     g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
     b = ((color & 0x1F) * 527 + 23) >> 6;
@@ -737,7 +771,7 @@ void disp_date(int year, int month, int day, int x, int y, int color) {
 }
 
 // draw manual mode
-void draw_manual_mode(int x, int y, int color) {
+void disp_manual_mode(int x, int y, int color) {
     int width;
 
     width = 100;
@@ -756,6 +790,61 @@ void draw_manual_mode(int x, int y, int color) {
     graphics.set_font(&font6);
     graphics.text("MANUAL", Point(x,y), 240, 2);
 }
+
+// draw magnitude on screen
+void disp_magnitude(double magnitude, int x, int y, int color) {
+    char text_string[10];
+    int width;
+    sprintf(text_string, "Mag = %.0lf", magnitude);
+    width = 50;
+
+    Rect box(x-1, y-1, width, 20);
+    box.inflate(1); // Inflate our box by 1px on all sides
+    graphics.set_pen(BLACK);
+    graphics.rectangle(box);
+
+    r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+    g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+    b = ((color & 0x1F) * 527 + 23) >> 6;
+    //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+    graphics.reset_pen(col);
+    col = graphics.create_pen(r,g,b);
+    graphics.set_pen(col);
+    graphics.set_font(&font8);
+    graphics.text(text_string, Point(x,y), 240, 2);
+
+}
+
+// draw text offset on screen
+void disp_time_offset(int offset, int x, int y, int color) {
+    char text_string[10];
+    int width;
+    if (offset < 0) {
+        sprintf(text_string, "-%d", abs(offset));
+    } else if (offset < 0) {
+        sprintf(text_string, "+%d", abs(offset));
+    } else {
+        sprintf(text_string, "", abs(offset));
+    }
+    sprintf(text_string, "%d", offset);
+    width = 50;
+
+    Rect box(x-1, y-1, width, 10);
+    box.inflate(1); // Inflate our box by 1px on all sides
+    graphics.set_pen(BLACK);
+    graphics.rectangle(box);
+
+    r = (((color >> 11) & 0x1F) * 527 + 23) >> 6;
+    g = (((color >> 5) & 0x3F) *259 + 33) >> 6;
+    b = ((color & 0x1F) * 527 + 23) >> 6;
+    //printf("Coverted color : R:%d G:%d B:%d \n",r,g,b);
+    graphics.reset_pen(col);
+    col = graphics.create_pen(r,g,b);
+    graphics.set_pen(col);
+    graphics.set_font(&font8);
+    graphics.text(text_string, Point(x,y), 240, 1);
+}
+
 
 /* A basic callback function that triggers when an alarm triggers. */
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask) {

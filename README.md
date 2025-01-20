@@ -399,9 +399,12 @@ A `starmap.uf2`  firmware is generated that can be flashed on the microcontrolle
 Flashing the firmware will get you running. 
 On startup, the pico will attempt for 10 sec to get to wifi and update the time of the DS3231. If failed, it will pull the time from the DS3231.
 The code makes use of the 4 buttons on the Pimoroni pico display pack :
-- `X` : switch to manual mode (with manula written on the screen and the led turning red), which allows you to get forward and backward in time resp. with the buttons `B` and `A`
-  - in this mode, the screen won't be updated unless a button is pressed
-- `Y` : go back to auto mode, with the screen updating the datetime every minute and the map once every five minutes
+- `X` : switch between manual mode and auto mode : 
+  - Manual mode allows you to get forward and backward in time resp. with the buttons `B` and `A`. in this mode, the screen won't be updated unless a button is pressed
+  - Auto mode is set to current date and time, with the screen updating the datetime every minute and the map once every five minutes.
+  - In manual mode, `A` and `B` buttons add or remove one hour to the current time. Keeping the button pressed gradually increment the number of hours until released, allowing the calculation to be made and the screen to be updated. The number of hours that will be added and the button is released is shwon as small number is shown below the hour figure. 
+- `Y` : cycles through magnitude from [-1 ; 5]
+
 
 ### Serial console
 ``` bash
