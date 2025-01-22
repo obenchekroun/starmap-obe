@@ -570,13 +570,13 @@ int main() {
           // Draw lat and long on screen
           lat = starmap.siteLat;
           lon = starmap.siteLon;
-          disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, LILAC_COLOR);
+          disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
           // Draw time on screen
           disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
           // Draw date
           disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
           //draw magnitude
-          disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, MILD_GREEN_COLOR);
+          disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
           // draw MANUAL
           if (!mode) {
               disp_manual_mode(X_POS_MANUAL,Y_POS_MANUAL,RED_COLOR);
@@ -611,13 +611,13 @@ int main() {
               // Draw lat and long on screen
               lat = starmap.siteLat;
               lon = starmap.siteLon;
-              disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, LILAC_COLOR);
+              disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
               // Draw time
               disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
               // Draw date
               disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
               //draw magnitude
-              disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, MILD_GREEN_COLOR);
+              disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
               // Displaying the image
               st7789.update(&graphics);
           }

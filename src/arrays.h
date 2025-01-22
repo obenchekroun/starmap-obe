@@ -20,6 +20,18 @@ extern const char moonbright[7];
 extern const char moondim[7];
 extern const char moondark[7];
 extern const char moonphtext[8][7];
+
+extern const char sun_icon[4][8];
+extern const char mercury_icon[4][8];
+extern const char venus_icon[4][8];
+extern const char earth_icon[4][8];
+extern const char mars_icon[4][8];
+extern const char jupiter_icon[4][8];
+extern const char saturn_icon[4][8];
+extern const char uranus_icon[4][8];
+extern const char neptune_icon[4][8];
+extern const char pluto_icon[4][8];
+
 extern const unsigned char planet_icon[10][32];
 extern const unsigned char star_icon[9][8];
 

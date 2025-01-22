@@ -28,19 +28,59 @@
 #define DEFAULT_COL_STARDIM    0x03ff
 #define DEFAULT_COL_STARBRIGHT 0x0fff
 #define DEFAULT_COL_STARTEXT 0xffff
+/*moon color*/
 #define DEFAULT_COL_MOON_BRIGHT 0xff11
 #define DEFAULT_COL_MOON_DIM 0xff22
 #define DEFAULT_COL_MOON_DARK 0x01ff
 #define DEFAULT_COL_MOON_PHTEXT 0x00ff
+/*default color*/
 #define DEFAULT_COL_TEXT_GENERIC 0x00ff
+/* sun color */
+#define DEFAULT_COL1_SUN        0xfd81
+#define DEFAULT_COL2_SUN        0xfbc4
+#define DEFAULT_COL3_SUN        0xc384
+#define DEFAULT_COL4_SUN        0xca83
 /* planets colors */
-#define DEFAULT_COL_MERCURY    0xa55f
-#define DEFAULT_COL_VENUS      0xa55f
-#define DEFAULT_COL_MARS       0xa55f
-#define DEFAULT_COL_JUPITER    0xa55f
-#define DEFAULT_COL_SATURN     0xa55f
-#define DEFAULT_COL_URANUS     0xa55f
-#define DEFAULT_COL_NEPTUNE    0xa55f
+#define DEFAULT_COL1_MERCURY    0x5aaa
+#define DEFAULT_COL2_MERCURY    0x83f0
+#define DEFAULT_COL3_MERCURY    0x6b4d
+#define DEFAULT_COL4_MERCURY    0x9d76
+
+#define DEFAULT_COL1_VENUS      0xffff
+#define DEFAULT_COL2_VENUS      0xfeb7
+#define DEFAULT_COL3_VENUS      0xee13
+#define DEFAULT_COL4_VENUS      0xc50f
+
+#define DEFAULT_COL1_MARS       0xc3ab
+#define DEFAULT_COL2_MARS       0x92ca
+#define DEFAULT_COL3_MARS       0x4147
+#define DEFAULT_COL4_MARS       0x6a2c
+
+#define DEFAULT_COL1_JUPITER    0xe73c
+#define DEFAULT_COL2_JUPITER    0xee13
+#define DEFAULT_COL3_JUPITER    0xd40e
+#define DEFAULT_COL4_JUPITER    0x8aa7
+
+#define DEFAULT_COL1_SATURN     0xee13
+#define DEFAULT_COL2_SATURN     0xd50c
+#define DEFAULT_COL3_SATURN     0xc48b
+#define DEFAULT_COL4_SATURN     0xac29
+
+#define DEFAULT_COL1_URANUS     0x87de
+#define DEFAULT_COL2_URANUS     0xadbb
+#define DEFAULT_COL3_URANUS     0xcedf
+#define DEFAULT_COL4_URANUS     0x667c
+
+#define DEFAULT_COL1_NEPTUNE    0x5b7b
+#define DEFAULT_COL2_NEPTUNE    0x4ad7
+#define DEFAULT_COL3_NEPTUNE    0x21fe
+#define DEFAULT_COL4_NEPTUNE    0x20f7
+
+#define DEFAULT_COL1_PLUTO      0xd32e//0x9987
+#define DEFAULT_COL2_PLUTO      0xf777
+#define DEFAULT_COL3_PLUTO      0x7e17
+#define DEFAULT_COL4_PLUTO      0x0000
+
 /*  Astronomical constants  */
 #define epoch	    2444238.5	   /* 1980 January 0.0 */
 /*  Constants defining the Sun's apparent orbit  */
@@ -245,7 +285,8 @@ class Starmap
     void jyear(double td, long *yy, int *mm, int *dd);
     void plot_char(char c, int x, int y, int color);
     void DrawMoon(int x, int y, int age);
-    void DrawPlanet(int x, int y, int col);
+    //void DrawPlanet(int x, int y, int col);
+    void DrawPlanet(int x, int y, const char icon[][8], int col1, int col2, int col3, int col4);
 
     virtual void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
     virtual void plot_pixel(uint16_t color, int x, int y);
@@ -267,6 +308,7 @@ class Starmap
     int col_stardim;
     int col_starbright;
     int col_startext;
+    //colors for the moon
     int col_moon_bright;
     int col_moon_dim;
     int col_moon_dark;
@@ -278,14 +320,52 @@ class Starmap
     int col_celest_eq_text;
     int col_ecliptic_text;
 
+    //colors for the sun
+    int col1_sun;
+    int col2_sun;
+    int col3_sun;
+    int col4_sun;
+
     // colors for the planets
-    int col_mercury;
-    int col_venus;
-    int col_mars;
-    int col_jupiter;
-    int col_saturn;
-    int col_uranus;
-    int col_neptune;
+    int col1_mercury;
+    int col2_mercury;
+    int col3_mercury;
+    int col4_mercury;
+
+    int col1_venus;
+    int col2_venus;
+    int col3_venus;
+    int col4_venus;
+
+    int col1_mars;
+    int col2_mars;
+    int col3_mars;
+    int col4_mars;
+
+    int col1_jupiter;
+    int col2_jupiter;
+    int col3_jupiter;
+    int col4_jupiter;
+
+    int col1_saturn;
+    int col2_saturn;
+    int col3_saturn;
+    int col4_saturn;
+
+    int col1_uranus;
+    int col2_uranus;
+    int col3_uranus;
+    int col4_uranus;
+
+    int col1_neptune;
+    int col2_neptune;
+    int col3_neptune;
+    int col4_neptune;
+
+    int col1_pluto;
+    int col2_pluto;
+    int col3_pluto;
+    int col4_pluto;
 
     // flags
     char do_constellation_text;
