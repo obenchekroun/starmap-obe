@@ -416,10 +416,13 @@ minicom -b 115200 -o -D /dev/tty.usbmodem101
 
 ## Acknowledgement
 
+### Homeplanet code
 Note: This code uses content from https://www.fourmilab.ch/homeplanet/ (public domain code).
 
 See the screenshot here:
 
-<img width="100%" align="left" src="screenshot-public-domain-code.jpg">
+<img width="100%" align="left" src="img/screenshot-public-domain-code.jpg">
 
+### Images of planet
 
+Planets icons are inspired from [here](https://51n1.itch.io/8x8-pixel-art-asset?download) and pluto from [here](https://www.reddit.com/r/PixelArt/comments/as0xen/oc_pluto/) from user u/IIPorkinsII.
