@@ -51,9 +51,9 @@
 #define DEFAULT_COL3_VENUS      0xee13
 #define DEFAULT_COL4_VENUS      0xc50f
 
-#define DEFAULT_COL1_MARS       0xc3ab
-#define DEFAULT_COL2_MARS       0x92ca
-#define DEFAULT_COL3_MARS       0x4147
+#define DEFAULT_COL1_MARS       0xe9e5//0xc3ab
+#define DEFAULT_COL2_MARS       0xc3ab//0xc2ea//0x92ca
+#define DEFAULT_COL3_MARS       0xb947//0x4147
 #define DEFAULT_COL4_MARS       0x6a2c
 
 #define DEFAULT_COL1_JUPITER    0xe73c
@@ -286,8 +286,8 @@ class Starmap
     void plot_char(char c, int x, int y, int color);
     void DrawMoon(int x, int y, int age);
     //void DrawPlanet(int x, int y, int col);
-    void DrawPlanet(int x, int y, const char icon[][8], int col1, int col2, int col3, int col4);
-
+    //void DrawPlanet(int x, int y, const char icon[][4][8], int col1, int col2, int col3, int col4);
+    void DrawPlanet(int x, int y, int planet_index);
     virtual void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
     virtual void plot_pixel(uint16_t color, int x, int y);
     virtual void text_out(int x, int y, char* lab, unsigned char len, char type);
@@ -337,6 +337,11 @@ class Starmap
     int col3_venus;
     int col4_venus;
 
+    int col1_earth;
+    int col2_earth;
+    int col3_earth;
+    int col4_earth;
+
     int col1_mars;
     int col2_mars;
     int col3_mars;
@@ -370,110 +375,123 @@ class Starmap
     // flags
     char do_constellation_text;
     int skyShowBflam;
+    int showPlanets;
 
 
   private:
-  double ucttoj(long year, int mon, int mday, int hour, int min, int sec);
-  void init_gt(mapwindow *win);
-  void do_gt(double lat, double lon, double *xloc, double *yloc, double *r_theta);
-  void inv_gt(double x, double y, double *latp, double *lonp);
-  void plotLine(double fdec, double fra, double tdec, double tra);
-  void MoveTo(int x, int y);
-  void LineTo(int x, int y);
-  void TextOut(int x, int y, char* lab, unsigned char len, char type);
-  int OnScreen(int x, int y);
-  void DrawStar(int x, int y, int level);
-  double obliqeq(double jd);
-  void definePrecession(double targetEpoch);
-  void precessObject(double ira, double idec, double *ora, double *odec);
-  double evalPoly(double a0, double a1, double a2, double a3, double t);
-  double aint(double z);
-  double range(double val);
-  double kepler(double e, double M);
-  double truean(double e, double E);
-  double longi(double w2, double i, double u);
-  double lati(double u, double i);
-  void quadrat(double a, double b, double c, double *x_1, double *x_2, int *n);
-  void gcmidpoint(double lat1, double lon1, double lat2, double lon2, double *pmlat, double *pmlon);
-  void circ_intersect(double x_1, double y_1, double x_2, double y_2, double r, double *x1, double *y1, int *int_1, double *x2, double *y2, int *int_2);
-  void speak(int which, double ra, double dec, double dis, int mag, struct planet *planet_info);
-  void trans(int which, double r, double b, double ll, double Stheta, double Sr, double epli, int mag, struct planet *planet_info);
-  void do_mercury(double T0, struct planet *planet_info);
-  void do_venus(double T0, struct planet *planet_info);
-  void do_mars(double T0, struct planet *planet_info);
-  void do_jupiter(double T0, struct planet *planet_info);
-  void do_saturn(double T0, struct planet *planet_info);
-  void do_uranus(double T0, struct planet *planet_info);
-  void do_neptune(double T0, struct planet *planet_info);
-  int pluto(double jd, double *l, double *b, double *r);
-  void calcPlanet(double jd);
+    double ucttoj(long year, int mon, int mday, int hour, int min, int sec);
+    void init_gt(mapwindow *win);
+    void do_gt(double lat, double lon, double *xloc, double *yloc, double *r_theta);
+    void inv_gt(double x, double y, double *latp, double *lonp);
+    void plotLine(double fdec, double fra, double tdec, double tra);
+    void MoveTo(int x, int y);
+    void LineTo(int x, int y);
+    void TextOut(int x, int y, char* lab, unsigned char len, char type);
+    int OnScreen(int x, int y);
+    void DrawStar(int x, int y, int level);
+    double obliqeq(double jd);
+    void definePrecession(double targetEpoch);
+    void precessObject(double ira, double idec, double *ora, double *odec);
+    double evalPoly(double a0, double a1, double a2, double a3, double t);
+    double aint(double z);
+    double range(double val);
+    double kepler(double e, double M);
+    double truean(double e, double E);
+    double longi(double w2, double i, double u);
+    double lati(double u, double i);
+    void quadrat(double a, double b, double c, double *x_1, double *x_2, int *n);
+    void gcmidpoint(double lat1, double lon1, double lat2, double lon2, double *pmlat, double *pmlon);
+    void circ_intersect(double x_1, double y_1, double x_2, double y_2, double r, double *x1, double *y1, int *int_1, double *x2, double *y2, int *int_2);
+    void speak(int which, double ra, double dec, double dis, int mag, struct planet *planet_info);
+    void trans(int which, double r, double b, double ll, double Stheta, double Sr, double epli, int mag, struct planet *planet_info);
+    void do_mercury(double T0, struct planet *planet_info);
+    void do_venus(double T0, struct planet *planet_info);
+    void do_mars(double T0, struct planet *planet_info);
+    void do_jupiter(double T0, struct planet *planet_info);
+    void do_saturn(double T0, struct planet *planet_info);
+    void do_uranus(double T0, struct planet *planet_info);
+    void do_neptune(double T0, struct planet *planet_info);
+    int pluto(double jd, double *l, double *b, double *r);
+    void calcPlanet(double jd);
 
   
-  char mDummy;
-  double preZeta;
-  double preZ;
-  double preTheta;
-  double xf_north, xf_south, xf_bottom;
-  int xf_xcen, xf_ycen, xf_ybot;
-  int xf_w_left, xf_w_right, xf_w_top, xf_w_bot;
-  double xf_c_scale;
-  int xfs_proj_mode;
-  double xfs_ra_cen, xfs_dl_cen, sin_dlcen, cos_dlcen, chart_scale;
-  double xfs_scale;                /* Formerly yscale */
-  double xfs_vinv, xfs_hinv;
-  int xfs_wide_warn;
-  double gt_sin_dlcen, gt_cos_dlcen, gt_chart_scale;
-  double gt_scale;
-  double gt_wx1, gt_wy1, gt_wx2, gt_wy2;
-  double gt_ex1, gt_ey1, gt_ex2, gt_ey2;
-  double gt_ny0, gt_na, gt_nb;
-  double gt_sy0, gt_sa, gt_sb;
-  double gt_r;
-  int gt_use_boundaries;
-  int clip_at1, clip_at2;
-  double pie, radn;
-  double plan_l, plan_a, plan_e, plan_i, plan_w1, plan_w2;
-  double plan_M, plan_M0, plan_M1, plan_M2, plan_M4, plan_M5, plan_M6, plan_M7, plan_M8;
-  double plan_RA, plan_DEC;
-  double plan_ECC, plan_nu, plan_r, plan_u, plan_ll, plan_b, plan_lonpert, plan_radpert;
-  double plan_esun, plan_Lsun, plan_Cen, plan_Snu;
-  double plan_N, plan_D, plan_thapp, plan_omeg;
-  double plan_nu2, plan_P, plan_Q, plan_S, plan_V, plan_W;
-  double plan_ze, plan_l1pert, plan_epert, plan_w1pert, plan_apert;
-  double plan_psi, plan_H, plan_G, plan_eta, plan_th;
-  double plan_epli, plan_Stheta, plan_Sr;
-  double skyLimitMag;
-  int skyShowName;
-  double skyNameMag;
-  double skyBflamMag;
-  int skyShowDeep;
-  double skyDeepMag;
-  int skyShowConstellations;
-  int skyShowConbounds;
-  int skyShowConnames;
-  int skyAlignConnames;
-  int skyShowCoords;
-  int skyShowPlanets;
-  int skyShowTiming;
-  int precessionCalculation;
-  struct planet planet_info[11];
-  mapwindow skywin;
-  char firstTick;
-  char nextTick;
-  char bailedOut;
-  long calculationNumber;
-  double skyLham;
-  int Flip;
-  long tickerLast;
-  int pirefc;
-  int starCatalogue;
-  int starQuality;
-  int showStarColours;
-  int draw_x_store, draw_y_store;
-  uint16_t draw_col_store;
-  int plutoPrecise;
+    char mDummy;
+    double preZeta;
+    double preZ;
+    double preTheta;
+    double xf_north, xf_south, xf_bottom;
+    int xf_xcen, xf_ycen, xf_ybot;
+    int xf_w_left, xf_w_right, xf_w_top, xf_w_bot;
+    double xf_c_scale;
+    int xfs_proj_mode;
+    double xfs_ra_cen, xfs_dl_cen, sin_dlcen, cos_dlcen, chart_scale;
+    double xfs_scale;                /* Formerly yscale */
+    double xfs_vinv, xfs_hinv;
+    int xfs_wide_warn;
+    double gt_sin_dlcen, gt_cos_dlcen, gt_chart_scale;
+    double gt_scale;
+    double gt_wx1, gt_wy1, gt_wx2, gt_wy2;
+    double gt_ex1, gt_ey1, gt_ex2, gt_ey2;
+    double gt_ny0, gt_na, gt_nb;
+    double gt_sy0, gt_sa, gt_sb;
+    double gt_r;
+    int gt_use_boundaries;
+    int clip_at1, clip_at2;
+    double pie, radn;
+    double plan_l, plan_a, plan_e, plan_i, plan_w1, plan_w2;
+    double plan_M, plan_M0, plan_M1, plan_M2, plan_M4, plan_M5, plan_M6, plan_M7, plan_M8;
+    double plan_RA, plan_DEC;
+    double plan_ECC, plan_nu, plan_r, plan_u, plan_ll, plan_b, plan_lonpert, plan_radpert;
+    double plan_esun, plan_Lsun, plan_Cen, plan_Snu;
+    double plan_N, plan_D, plan_thapp, plan_omeg;
+    double plan_nu2, plan_P, plan_Q, plan_S, plan_V, plan_W;
+    double plan_ze, plan_l1pert, plan_epert, plan_w1pert, plan_apert;
+    double plan_psi, plan_H, plan_G, plan_eta, plan_th;
+    double plan_epli, plan_Stheta, plan_Sr;
+    double skyLimitMag;
+    int skyShowName;
+    double skyNameMag;
+    double skyBflamMag;
+    int skyShowDeep;
+    double skyDeepMag;
+    int skyShowConstellations;
+    int skyShowConbounds;
+    int skyShowConnames;
+    int skyAlignConnames;
+    int skyShowCoords;
+    int skyShowPlanets;
+    int skyShowTiming;
+    int precessionCalculation;
+    struct planet planet_info[11];
+    mapwindow skywin;
+    char firstTick;
+    char nextTick;
+    char bailedOut;
+    long calculationNumber;
+    double skyLham;
+    int Flip;
+    long tickerLast;
+    int pirefc;
+    int starCatalogue;
+    int starQuality;
+    int showStarColours;
+    int draw_x_store, draw_y_store;
+    uint16_t draw_col_store;
+    int plutoPrecise;
 
-
+    //arrays of pointers to sun+planets colors
+    //orders are :
+    //0 - Sun
+    //1 - Mercury
+    //2 - Venus
+    //3 - Earth
+    //4 - Mars
+    //5 - Jupiter
+    //6 - Saturn
+    //7 - Uranus
+    //8 - Neptune
+    //9 - Pluto
+    int* colors_pointers[10][4];
 
 
 };

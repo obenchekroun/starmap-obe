@@ -2,6 +2,7 @@
 // rev 1 - May 2024 - shabaz - first version
 
 #include "Starmap.h"
+#include "arrays.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -131,6 +132,58 @@ Starmap::Starmap()
   col2_pluto = DEFAULT_COL2_PLUTO;
   col3_pluto = DEFAULT_COL3_PLUTO;
   col4_pluto = DEFAULT_COL4_PLUTO;
+
+  //initializing array of pointers for planets + sun color palettes (4 colors)
+
+  colors_pointers[0][0] = &col1_sun;
+  colors_pointers[0][1] = &col2_sun;
+  colors_pointers[0][2] = &col3_sun;
+  colors_pointers[0][3] = &col4_sun;
+
+  colors_pointers[1][0] = &col1_mercury;
+  colors_pointers[1][1] = &col2_mercury;
+  colors_pointers[1][2] = &col3_mercury;
+  colors_pointers[1][3] = &col4_mercury;
+
+  colors_pointers[2][0] = &col1_venus;
+  colors_pointers[2][1] = &col2_venus;
+  colors_pointers[2][2] = &col3_venus;
+  colors_pointers[2][3] = &col4_venus;
+
+  colors_pointers[3][0] = &col1_earth;
+  colors_pointers[3][1] = &col2_earth;
+  colors_pointers[3][2] = &col3_earth;
+  colors_pointers[3][3] = &col4_earth;
+
+  colors_pointers[4][0] = &col1_mars;
+  colors_pointers[4][1] = &col2_mars;
+  colors_pointers[4][2] = &col3_mars;
+  colors_pointers[4][3] = &col4_mars;
+
+  colors_pointers[5][0] = &col1_jupiter;
+  colors_pointers[5][1] = &col2_jupiter;
+  colors_pointers[5][2] = &col3_jupiter;
+  colors_pointers[5][3] = &col4_jupiter;
+
+  colors_pointers[6][0] = &col1_saturn;
+  colors_pointers[6][1] = &col2_saturn;
+  colors_pointers[6][2] = &col3_saturn;
+  colors_pointers[6][3] = &col4_saturn;
+
+  colors_pointers[7][0] = &col1_uranus;
+  colors_pointers[7][1] = &col2_uranus;
+  colors_pointers[7][2] = &col3_uranus;
+  colors_pointers[7][3] = &col4_uranus;
+
+  colors_pointers[8][0] = &col1_neptune;
+  colors_pointers[8][1] = &col2_neptune;
+  colors_pointers[8][2] = &col3_neptune;
+  colors_pointers[8][3] = &col4_neptune;
+
+  colors_pointers[9][0] = &col1_pluto;
+  colors_pointers[9][1] = &col2_pluto;
+  colors_pointers[9][2] = &col3_pluto;
+  colors_pointers[9][3] = &col4_pluto;
 }
 
 double Starmap::jtime(tm_t *t)
@@ -2812,34 +2865,7 @@ mydeb=0x21;
 					//DrawIcon(hDC, vx - 16, vy - 13, micon);
 					DrawMoon(vx, vy, mage);
 				} else {
-					if (i == 0) {
-							DrawPlanet(vx,vy, sun_icon, col1_sun, col2_sun, col3_sun, col4_sun);
-					}
-					if (i == 1) {
-							DrawPlanet(vx,vy, mercury_icon, col1_mercury, col2_mercury, col3_mercury, col4_mercury);
-					}
-					if (i == 2) {
-							DrawPlanet(vx,vy, venus_icon, col1_venus, col2_venus, col3_venus, col4_venus);
-					}
-					if (i == 4) {
-							DrawPlanet(vx,vy, mars_icon, col1_mars, col2_mars, col3_mars, col4_mars);
-					}
-					if (i == 5) {
-							DrawPlanet(vx,vy, jupiter_icon, col1_jupiter, col2_jupiter, col3_jupiter, col4_jupiter);
-					}
-					if (i == 6) {
-							DrawPlanet(vx,vy, saturn_icon, col1_saturn, col2_saturn, col3_saturn, col4_saturn);
-					}
-					if (i == 7) {
-							DrawPlanet(vx,vy, uranus_icon, col1_uranus, col2_uranus, col3_uranus, col4_uranus);
-					}
-					if (i == 8) {
-							DrawPlanet(vx,vy, neptune_icon, col1_neptune, col2_neptune, col3_neptune, col4_neptune);
-					}
-					if (i == 9) {
-							DrawPlanet(vx,vy, pluto_icon, col1_pluto, col2_pluto, col3_pluto, col4_pluto);
-					}
-					//DrawPlanet(vx,vy,&mercury_icon, col_moon_bright, col_moon_dim, col_moon_dark, col_moon_phtext);
+					DrawPlanet(vx,vy,i);
 					// DrawIcon(hDC, vx - 16, vy - 16, PlanetIcon(i));
 				}
 			}
@@ -3196,36 +3222,26 @@ void Starmap::DrawMoon(int x, int y, int age)
     }
 }
 
-void Starmap::DrawPlanet(int x, int y, const char icon [][8], int col1, int col2, int col3, int col4)
+void Starmap::DrawPlanet(int x, int y, int planet_index)
 {
-	//int phase;
 	int i, j;
-
-	//phase = (age + 2) % 30;
-    //phase = (phase * 8) / 30;
 
     for (i=0; i<8; i++) {
         for (j=0; j<8; j++) {
-                if (icon[1][i] & (1 << j)) {
-                    plot_pixel(col1, x+i-4, y-j+4);
+                if (planet_drawing[planet_index][0][i] & (1 << j)) {
+                    plot_pixel(*colors_pointers[planet_index][0], x+i-4, y-j+4);
                 }
-                if (icon[2][i] & (1 << j)) {
-                    plot_pixel(col2, x+i-4, y-j+4);
+                if (planet_drawing[planet_index][1][i] & (1 << j)) {
+                    plot_pixel(*colors_pointers[planet_index][1], x+i-4, y-j+4);
                 }
-                if (icon[3][i] & (1 << j)) {
-                    plot_pixel(col3, x+i-4, y-j+4);
+                if (planet_drawing[planet_index][2][i] & (1 << j)) {
+                    plot_pixel(*colors_pointers[planet_index][2], x+i-4, y-j+4);
                 }
-                if (icon[4][i] & (1 << j)) {
-                    plot_pixel(col4, x+i-4, y-j+4);
+                if (planet_drawing[planet_index][3][i] & (1 << j)) {
+                    plot_pixel(*colors_pointers[planet_index][3], x+i-4, y-j+4);
                 }
             }
         }
-
-    // for (i=0; i<7; i++) {
-    //     for (j=0; j<7; j++) {
-	// 		plot_pixel(col, x+i-3, y-j+3);
-	// 	}
-	// }
 }
 
 void Starmap::DrawStar(int x, int y, int level)
