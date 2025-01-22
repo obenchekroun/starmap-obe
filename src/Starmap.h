@@ -51,6 +51,11 @@
 #define DEFAULT_COL3_VENUS      0xee13
 #define DEFAULT_COL4_VENUS      0xc50f
 
+#define DEFAULT_COL1_EARTH      0xcedf
+#define DEFAULT_COL2_EARTH      0x64df
+#define DEFAULT_COL3_EARTH      0x6de6
+#define DEFAULT_COL4_EARTH      0x420e
+
 #define DEFAULT_COL1_MARS       0xe9e5//0xc3ab
 #define DEFAULT_COL2_MARS       0xc3ab//0xc2ea//0x92ca
 #define DEFAULT_COL3_MARS       0xb947//0x4147

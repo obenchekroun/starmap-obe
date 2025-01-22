@@ -103,6 +103,11 @@ Starmap::Starmap()
   col3_venus = DEFAULT_COL3_VENUS;
   col4_venus = DEFAULT_COL4_VENUS;
 
+  col1_earth = DEFAULT_COL1_EARTH;
+  col2_earth = DEFAULT_COL2_EARTH;
+  col3_earth = DEFAULT_COL3_EARTH;
+  col4_earth = DEFAULT_COL4_EARTH;
+
   col1_mars = DEFAULT_COL1_MARS;
   col2_mars = DEFAULT_COL2_MARS;
   col3_mars = DEFAULT_COL3_MARS;
