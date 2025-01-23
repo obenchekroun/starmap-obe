@@ -61,10 +61,10 @@
 #define DEFAULT_COL3_MARS       0xb947//0x4147
 #define DEFAULT_COL4_MARS       0x6a2c
 
-#define DEFAULT_COL1_JUPITER    0xe73c
+#define DEFAULT_COL1_JUPITER    0xf693//0xe73c
 #define DEFAULT_COL2_JUPITER    0xee13
 #define DEFAULT_COL3_JUPITER    0xd40e
-#define DEFAULT_COL4_JUPITER    0x8aa7
+#define DEFAULT_COL4_JUPITER    0xbc4e//0x8aa7
 
 #define DEFAULT_COL1_SATURN     0xee13
 #define DEFAULT_COL2_SATURN     0xd50c
@@ -81,10 +81,10 @@
 #define DEFAULT_COL3_NEPTUNE    0x21fe
 #define DEFAULT_COL4_NEPTUNE    0x20f7
 
-#define DEFAULT_COL1_PLUTO      0xd32e//0x9987
-#define DEFAULT_COL2_PLUTO      0xf777
-#define DEFAULT_COL3_PLUTO      0x7e17
-#define DEFAULT_COL4_PLUTO      0x0000
+#define DEFAULT_COL1_PLUTO      0x7e17//0x7e17//0xd32e//0x9987
+#define DEFAULT_COL2_PLUTO      0xf777//0xf777
+#define DEFAULT_COL3_PLUTO      0xd32e//0xd32e//0x7e17
+#define DEFAULT_COL4_PLUTO      0x9987//0x0000
 
 /*  Astronomical constants  */
 #define epoch	    2444238.5	   /* 1980 January 0.0 */
