@@ -94,8 +94,8 @@ using namespace pimoroni;
 #define DEFAULT_UPDATE_DELAY 5 // in minutes
 
 // DS3231 HW RTC definition
-#define RTC_SDA_PIN 0
-#define RTC_SCL_PIN 1
+#define RTC_SDA_PIN 4 //GPIO number not pin number
+#define RTC_SCL_PIN 5 //GPIO number not pin number
 #define RTC_INT_PIN 18
 const char * days[7] = {"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"};
 const char * months[12] = {"Janv", "Févr", "Mars", "Avri", "Mai", "Juin", "Juil", "Aout", "Sept", "Octo", "Nove", "Dece"};
