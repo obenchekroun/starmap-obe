@@ -33,7 +33,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
-#include "lwgps/lwgps.h"
+#include "../include/lwgps/lwgps.h"
 #if LWESP_CFG_DISTANCE_BEARING
 #include <math.h>
 #endif

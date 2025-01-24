@@ -27,13 +27,14 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 # add compiled files subdirectory
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789 build/st7789)
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_2 build/pico_display_2)
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_graphics build/pico_graphics)
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/common build/common)
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled build/rgbled)
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/button build/button)
-add_subdirectory(../../lib/pico-ds3231 build/pico-ds3231)
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789 build/st7789) # Pico dislay pack 2 driver
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_2 build/pico_display_2) # Pico dislay pack 2 lib
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_graphics build/pico_graphics) # Pico graphics lib
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/common build/common) # Common dependencies for pimoroni libraries
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled build/rgbled) # Managing buttons of display pack 2
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/button build/button) # Managing buttons of display pack 2
+add_subdirectory(../../lib/pico-ds3231 build/pico-ds3231) # DS3231 lib & drivers
+add_subdirectory(../../lib/lwgps build/lwgps) #
 
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789)
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_2)
@@ -43,6 +44,8 @@ include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled)
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/button)
 include_directories(../../lib/pico-ds3231)
 include_directories(../../lib/ntp)
+include_directories(../../lib/lwgps/src/lwgps)
+include_directories(../../lib/lwgps/src/include/lwgps)
 
 # Add your executable and source files
 add_executable(${PROJECT_NAME}
@@ -61,7 +64,7 @@ pico_enable_stdio_usb(${PROJECT_NAME} 1)
 pico_enable_stdio_uart(${PROJECT_NAME} 0)
 
 # Link the Pico SDK to your project
-target_link_libraries(${PROJECT_NAME} pico_stdlib hardware_spi hardware_pwm hardware_pio hardware_dma rgbled button pico_display_2 st7789 pico_graphics hardware_rtc pico_ds3231 pico_cyw43_arch_lwip_threadsafe_background
+target_link_libraries(${PROJECT_NAME} pico_stdlib hardware_spi hardware_pwm hardware_pio hardware_dma rgbled button pico_display_2 st7789 pico_graphics hardware_rtc pico_ds3231 pico_cyw43_arch_lwip_threadsafe_background lwgps
 )
 
 
