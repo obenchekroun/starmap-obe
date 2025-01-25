@@ -25,11 +25,11 @@ extern "C" {
 }
 // NTP client
 #ifdef WITH_NTP
-   #include "pico/cyw43_arch.h"
+#include "pico/cyw43_arch.h"
 
-   #include "lwip/dns.h"
-   #include "lwip/pbuf.h"
-   #include "lwip/udp.h"
+#include "lwip/dns.h"
+#include "lwip/pbuf.h"
+#include "lwip/udp.h"
 #endif
 
 // Display libraries
@@ -117,6 +117,7 @@ typedef struct NTP_T_ {
 #define NTP_DELTA 2208988800 // seconds between 1 Jan 1900 and 1 Jan 1970
 #define NTP_TEST_TIME (30 * 1000)
 #define NTP_RESEND_TIME (10 * 1000)
+
 #endif
 
 // ***** class based on Starmap ******
@@ -158,10 +159,13 @@ uint8_t g;
 uint8_t b;
 //ds3231
 ds3231_t ds3231;
+// datetime variable to store rtc initialisation
+datetime_t t_init;
+
 #ifdef WITH_NTP
 // NTP
 NTP_T *state;
-int received_response;
+int received_response_ntp;
 #endif
 // ******** function prototypes ************
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
@@ -171,7 +175,8 @@ void disp_NESW (char c[], int x, int y, int color);
 void disp_manual_mode(int x, int y, int color);
 void disp_magnitude(double magnitude, int x, int y, int color);
 void disp_time_offset(int offset, int x, int y, int color);
-void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm);
+void convert_datetime_to_tm(const datetime_t * source_datetime, struct tm * dest_tm);
+void convert_tm_to_datetime(struct tm * source_tm, datetime_t * dest_datetime);
 const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
 
@@ -209,44 +214,17 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
     return(1);
 }
 
-lwgps_t hgps;
-const char gps_rx_data[] = ""
-                           "$GPRMC,183729,A,3907.356,N,12102.482,W,000.0,360.0,080301,015.5,E*6F\r\n"
-                           "$GPRMB,A,,,,,,,,,,,,V*71\r\n"
-                           "$GPGGA,183730,3907.356,N,12102.482,W,1,05,1.6,646.4,M,-24.1,M,,*75\r\n"
-                           "$GPGSA,A,3,02,,,07,,09,24,26,,,,,1.6,1.6,1.0*3D\r\n"
-                           "$GPGSV,2,1,08,02,43,088,38,04,42,145,00,05,11,291,00,07,60,043,35*71\r\n"
-                           "$GPGSV,2,2,08,08,02,145,00,09,46,303,47,24,16,178,32,26,18,231,43*77\r\n"
-                           "$PGRME,22.0,M,52.9,M,51.0,M*14\r\n"
-                           "$GPGLL,3907.360,N,12102.481,W,183730,A*33\r\n"
-                           "$PGRMZ,2062,f,3*2D\r\n"
-                           "$PGRMM,WGS84*06\r\n"
-                           "$GPBOD,,T,,M,,*47\r\n"
-                           "$GPRTE,1,1,c,0*07\r\n"
-                           "$GPRMC,183731,A,3907.482,N,12102.436,W,000.0,360.0,080301,015.5,E*67\r\n"
-                           "$GPRMB,A,,,,,,,,,,,,V*71\r\n";
 
 // ************* main code *****************
 int main() {
     stdio_init_all(); // Initialize standard IO
-    int k = 3;
-    while (k >= 0) {
-        printf("Testing in %d sec...\n", k);
-        k--;
-        sleep_ms(1000);
-    }
+    // int k = 3;
+    // while (k >= 0) {
+    //     printf("Testing in %d sec...\n", k);
+    //     k--;
+    //     sleep_ms(1000);
+    // }
     printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
-    /* Init GPS */
-    lwgps_init(&hgps);
-
-    /* Process all input data */
-    lwgps_process(&hgps, gps_rx_data, strlen(gps_rx_data));
-
-    /* Print messages */
-    printf("Valid status: %d\r\n", hgps.is_valid);
-    printf("Latitude: %f degrees\r\n", hgps.latitude);
-    printf("Longitude: %f degrees\r\n", hgps.longitude);
-    printf("Altitude: %f meters\r\n", hgps.altitude);
 
   rect_s br; // rect used to paint the sky
   //int i, j;
@@ -342,15 +320,22 @@ int main() {
   sleep_ms(200);
 
     // Start on Friday 5th of June 2020 15:45:00
-    datetime_t t_init = {
-            .year  = 20,
-            .month = 6,
-            .day   = 5,
-            .dotw  = 5, // 0 is Sunday, so 5 is Friday
-            .hour  = 15,
-            .min   = 45,
-            .sec   = 0
-  };
+  //   datetime_t t_init = {
+  //           .year  = 20,
+  //           .month = 6,
+  //           .day   = 5,
+  //           .dotw  = 5, // 0 is Sunday, so 5 is Friday
+  //           .hour  = 15,
+  //           .min   = 45,
+  //           .sec   = 0
+  // };
+            t_init.year  = 20;
+            t_init.month = 6;
+            t_init.day   = 5;
+            t_init.dotw  = 5; // 0 is Sunday, so 5 is Friday
+            t_init.hour  = 15;
+            t_init.min   = 45;
+            t_init.sec   = 0;
 
       printf("DS3231 initialized !\n");
       graphics.set_pen(GREEN);
@@ -378,9 +363,6 @@ int main() {
         graphics.text("Trying to connect to wifi", Point(5,70), 240, 1);
         st7789.update(&graphics);
 
-        //cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000);
-        //printf("tentative finie");
-        //return 0;
         if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
             //cyw43_arch_poll();
             cyw43_arch_deinit();
@@ -396,7 +378,7 @@ int main() {
             st7789.update(&graphics);
 
             int nb_attempt = 5;
-            received_response = 0;
+            received_response_ntp = 0;
             state = ntp_init();
             if (!state) {
                 //return;
@@ -408,7 +390,7 @@ int main() {
                 graphics.set_pen(WHITE);
                 graphics.text("Attempt to get NTP response...", Point(5,90), 240, 1);
                 st7789.update(&graphics);
-                while(nb_attempt > 0 && !received_response) {
+                while(nb_attempt > 0 && !received_response_ntp) {
                     printf("Attempt to get NTP response n°%i\n", nb_attempt);
                     if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
                         // Set alarm in case udp requests are lost
@@ -424,7 +406,7 @@ int main() {
 
                         state->dns_request_sent = true;
                         if (err == ERR_OK) {
-                            //received_response = 1;
+                            //received_response_ntp = 1;
                             ntp_request(state); // Cached result
                         } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
                             printf("dns request failed\n");
@@ -466,20 +448,32 @@ int main() {
              ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
              days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
           graphics.set_pen(GREEN);
-          graphics.text("Time obtained from DS3231!", Point(5,110), 240, 1);
+          graphics.text("Time obtained from DS3231!", Point(5,120), 240, 1);
           st7789.update(&graphics);
 
-          t_init.year = (int8_t)ds3231_data.year;
-          t_init.month = (int8_t)ds3231_data.month;
-          t_init.day = (int8_t)ds3231_data.date;
-          t_init.dotw = (int8_t)dotw;
-          t_init.hour = (int8_t)ds3231_data.hours;
-          t_init.min = (int8_t)ds3231_data.minutes;
-          t_init.sec = (int8_t)ds3231_data.seconds;
+#ifdef WITH_NTP
+          if(!received_response_ntp) {
+#endif
+            t_init.year = (int8_t)ds3231_data.year;
+            t_init.month = (int8_t)ds3231_data.month;
+            t_init.day = (int8_t)ds3231_data.date;
+            t_init.dotw = (int8_t)dotw;
+            t_init.hour = (int8_t)ds3231_data.hours;
+            t_init.min = (int8_t)ds3231_data.minutes;
+            t_init.sec = (int8_t)ds3231_data.seconds;
+            graphics.set_pen(GREEN);
+            graphics.text("DS3231 time set to RTC !", Point(5,130), 240, 1);
+#ifdef WITH_NTP
+          }
+#endif
 
   }
 
+  // deiniting i2c to avoid current draw on DS3231 battery
+  i2c_deinit(ds3231.i2c);
+
   // Start the RTC
+
   rtc_init();
   rtc_set_datetime(&t_init);
   // clk_sys is >2000x faster than clk_rtc, so datetime is not updated immediately when rtc_get_datetime() is called.
@@ -494,8 +488,9 @@ int main() {
   current_time_offset = 0;
 
   graphics.set_pen(WHITE);
-  graphics.text("Beginning loop!", Point(5,120), 240, 1);
+  graphics.text("Beginning loop! in 3sec", Point(5,140), 240, 1);
   st7789.update(&graphics);
+  sleep_ms(3000);
 
   while(FOREVER){
       // switching mode with button X
@@ -552,7 +547,7 @@ int main() {
           // get time
           if (mode) {
               rtc_get_datetime(&t_init);
-              datetime_to_tm_obe(&t_init, &tm);
+              convert_datetime_to_tm(&t_init, &tm);
               t = mktime(&tm);
           }
           hr = tm.tm_hour;
@@ -616,7 +611,7 @@ int main() {
 
           if (mode) {
               rtc_get_datetime(&t_init);
-              datetime_to_tm_obe(&t_init, &tm);
+              convert_datetime_to_tm(&t_init, &tm);
               ts = mktime(&tm);
           }
       }
@@ -625,7 +620,7 @@ int main() {
       to_update = 0;
       while (loop && mode) {
           rtc_get_datetime(&t_init);
-          datetime_to_tm_obe(&t_init, &tm);
+          convert_datetime_to_tm(&t_init, &tm);
           t = mktime(&tm);
           hr = tm.tm_hour;
           min = tm.tm_min;
@@ -680,13 +675,22 @@ int main() {
   return(0);
 }
 
-void datetime_to_tm_obe(const datetime_t * source_datetime, struct tm * dest_tm) {
+void convert_datetime_to_tm(const datetime_t * source_datetime, struct tm * dest_tm) {
     dest_tm->tm_sec=source_datetime->sec;   // seconds 0-61?
     dest_tm->tm_min=source_datetime->min;  // minutes 0-59
     dest_tm->tm_hour=source_datetime->hour;  // hour 0-23
     dest_tm->tm_mday=source_datetime->day;  // date 1-31
     dest_tm->tm_mon=source_datetime->month-1; // month 0-11
     dest_tm->tm_year=source_datetime->year+100; // years since 1900. Example: 104 means 1900+104 = year 2004
+}
+
+void convert_tm_to_datetime(struct tm * source_tm, datetime_t * dest_datetime) {
+    dest_datetime->sec=source_tm->tm_sec;   // seconds 0-61?
+    dest_datetime->min=source_tm->tm_min;  // minutes 0-59
+    dest_datetime->hour=source_tm->tm_hour;  // hour 0-23
+    dest_datetime->day=source_tm->tm_mday;  // date 1-31
+    dest_datetime->month=source_tm->tm_mon+1; // month 0-11
+    dest_datetime->year=source_tm->tm_year-100; // years since 1900. Example: 104 means 1900+104 = year 2004
 }
 
 // ************** other functions *********************
@@ -926,6 +930,13 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         graphics.text("NTP time saved to DS3231!", Point(5,100), 240, 1);
         st7789.update(&graphics);
 
+        // putting time from ntp in t_init to initialize pico RTC
+        convert_tm_to_datetime(utc, &t_init);
+        printf("NTP time converted to initialize RTC !\n");
+        graphics.set_pen(GREEN);
+        graphics.text("NTP time converted to initialize RTC!", Point(5,110), 240, 1);
+        st7789.update(&graphics);
+
     }
 
     if (state->ntp_resend_alarm > 0) {
@@ -990,7 +1001,7 @@ static void ntp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
         uint32_t seconds_since_1970 = seconds_since_1900 - NTP_DELTA;
         time_t ntp_epoch = seconds_since_1970;
         ntp_result(state, 0, &ntp_epoch);
-        received_response = 1;
+        received_response_ntp = 1;
     } else {
         printf("invalid ntp response\n");
         ntp_result(state, -1, NULL);
