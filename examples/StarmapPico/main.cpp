@@ -24,7 +24,7 @@ extern "C" {
    #include "ds3231.h"
 }
 // NTP client
-#ifdef WITH_NTP
+#if WITH_NTP
 #include "pico/cyw43_arch.h"
 
 #include "lwip/dns.h"
@@ -488,9 +488,9 @@ int main() {
   current_time_offset = 0;
 
   graphics.set_pen(WHITE);
-  graphics.text("Beginning loop! in 3sec", Point(5,140), 240, 1);
+  graphics.text("Beginning loop! in 2 sec...", Point(5,140), 240, 1);
   st7789.update(&graphics);
-  sleep_ms(3000);
+  sleep_ms(2000);
 
   while(FOREVER){
       // switching mode with button X

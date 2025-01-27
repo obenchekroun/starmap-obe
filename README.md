@@ -364,12 +364,12 @@ MEMORY
 *NB: This is the file used for linker for rp2040 boards. For other boards, seek for the corresponding files each corresponding `ports` folder* 
  
 ### Building
-- Setting  board is done by passing the correct varaible to cmake `-DPICO_BOARD=pico_w`. It is necessary to set it through cmake and not `C%akeLists.txt` so cmake pulls the correct libraries for the pico_w.
+- Setting  board is done by passing the correct variable to cmake `-DPICO_BOARD=pico_w`. It can also be set in `CMakeLists.txt` through `set(PICO_BOARD pico_w)`.
     - List of boards can be find here : `pico-sdk/src/boards/include/boards/` 
 - Pin used for the RTC are in `main.cpp` : 
 ``` c++
-#define RTC_SDA_PIN 0
-#define RTC_SCL_PIN 1
+#define RTC_SDA_PIN 4
+#define RTC_SCL_PIN 5
 #define RTC_INT_PIN 18
 ```
 
@@ -380,7 +380,7 @@ MEMORY
 
 - To define the use of NTP (and need of wi-fi capabilities), you can either :
     - add or remove`#define WITH_NTP 1` in the beginning of `main.cpp`
-    - put`-DWITH_NTP=1` to `add_definitions(-DLINUX_BUILD=1 -DPICO_CYW43_SUPPORTED=1 -DWITH_NTP=1)` in `CMakeLists.txt`. This is the default on the current code
+    - set `set(WITH_NTP 1)` in `CMakeLists.txt`. This is the default on the current code.
     
 Then building it is done with :
 ```

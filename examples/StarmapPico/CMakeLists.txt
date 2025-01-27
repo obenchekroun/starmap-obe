@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.13)
 
+# Needs to be done before including SDK pico
+# https://forums.raspberrypi.com/viewtopic.php?t=376508
+set(PICO_BOARD pico_w)
+set(PICO_PLATFORM rp2040)
+
+# Set if want to use ntp
+set(WITH_NTP 0)
+
 # Include the Pico SDK initialization script
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
 include($ENV{PICO_SDK_PATH}/../pimoroni-pico/pimoroni_pico_import.cmake)
@@ -11,17 +19,25 @@ set(CMAKE_CXX_STANDARD 17)
 # Initialize the Pico SDK
 pico_sdk_init()
 
-set(PICO_BOARD pico_w)
-#set(WIFI_SSID "<PUT WIFI SSID HERE>")
-#set(WIFI_PASSWORD "<PUT WIFI PASSWORD>")
-
 # append flag, best practice, suggested, don't lose previously defined flags
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
 
 # Definitions for compiler
-add_definitions(-DLINUX_BUILD=1 -DPICO_CYW43_SUPPORTED=1 -DWITH_NTP=1) # #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
+if(WITH_NTP)
+#    set(my_compile_def ${my_compile_def} WITH_NTP)
+    add_compile_definitions(
+        LINUX_BUILD=1
+        #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
+        WITH_NTP
+    )
+else()
+    add_compile_definitions(
+        LINUX_BUILD=1
+        #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
+    )
+endif()
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -64,8 +80,32 @@ pico_enable_stdio_usb(${PROJECT_NAME} 1)
 pico_enable_stdio_uart(${PROJECT_NAME} 0)
 
 # Link the Pico SDK to your project
-target_link_libraries(${PROJECT_NAME} pico_stdlib hardware_spi hardware_pwm hardware_pio hardware_dma rgbled button pico_display_2 st7789 pico_graphics hardware_rtc pico_ds3231 pico_cyw43_arch_lwip_threadsafe_background lwgps
+set(my_lib
+     pico_stdlib
+     hardware_spi
+     hardware_pwm
+     hardware_pio
+     hardware_dma
+     rgbled
+     button
+     pico_display_2
+     st7789
+     pico_graphics
+     hardware_rtc
+     pico_ds3231
+     #pico_cyw43_arch_lwip_threadsafe_background
+     lwgps
 )
+
+message(my_lib"${my_lib}")
+
+if(WITH_NTP)
+    set(my_lib ${my_lib} pico_cyw43_arch_lwip_threadsafe_background)
+endif()
+
+target_link_libraries(${PROJECT_NAME} ${my_lib})
+# target_link_libraries(${PROJECT_NAME} pico_stdlib hardware_spi hardware_pwm hardware_pio hardware_dma rgbled button pico_display_2 st7789 pico_graphics hardware_rtc pico_ds3231 pico_cyw43_arch_lwip_threadsafe_background lwgps
+# )
 
 
 # Create map/bin/hex/uf2 files
