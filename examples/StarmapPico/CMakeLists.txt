@@ -91,21 +91,17 @@ set(my_lib
      pico_display_2
      st7789
      pico_graphics
-     pico_aon_timer
+     pico_aon_timer #instead of hardware_rtc so the code works both for RP2040 and RP2350
      pico_ds3231
      #pico_cyw43_arch_lwip_threadsafe_background
      lwgps
 )
-
-message(my_lib"${my_lib}")
 
 if(WITH_NTP)
     set(my_lib ${my_lib} pico_cyw43_arch_lwip_threadsafe_background)
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${my_lib})
-# target_link_libraries(${PROJECT_NAME} pico_stdlib hardware_spi hardware_pwm hardware_pio hardware_dma rgbled button pico_display_2 st7789 pico_graphics hardware_rtc pico_ds3231 pico_cyw43_arch_lwip_threadsafe_background lwgps
-# )
 
 
 # Create map/bin/hex/uf2 files

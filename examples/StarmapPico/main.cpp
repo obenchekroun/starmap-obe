@@ -13,13 +13,12 @@
 #include <time.h>
 //#include <math.h>
 //#include <vector>
-#include <cstdlib>
 
 // RTC
 //#include "hardware/rtc.h" //replaced with pico_aon_timer
-#include "pico/aon_timer.h"
+#include "pico/aon_timer.h" //replacing hardware_rtc with so it works on both RP2350 and RP2040
 #include "pico/stdlib.h"
-#include "pico/util/datetime.h"
+//#include "pico/util/datetime.h"
 //DS3231 lib
 extern "C" {
    #include "ds3231.h"
@@ -125,7 +124,7 @@ typedef struct NTP_T_ {
 // ***** class based on Starmap ******
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);
-     //void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
+    //void draw_line(int x0, int y0, int x1, int y1, uint16_t color);
     //void text_out(int x, int y, char* lab, unsigned char len, char type);
     int storage_read(uint32_t addr, char* data, uint16_t len);
 };
@@ -162,7 +161,6 @@ uint8_t b;
 //ds3231
 ds3231_t ds3231;
 // datetime variable to store rtc initialisation
-//datetime_t t_init;
 struct tm t_init_tm;
 
 // NTP
@@ -179,8 +177,6 @@ void disp_NESW (char c[], int x, int y, int color);
 void disp_manual_mode(int x, int y, int color);
 void disp_magnitude(double magnitude, int x, int y, int color);
 void disp_time_offset(int offset, int x, int y, int color);
-void convert_datetime_to_tm(const datetime_t * source_datetime, struct tm * dest_tm);
-void convert_tm_to_datetime(struct tm * source_tm, datetime_t * dest_datetime);
 const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
 
@@ -192,7 +188,6 @@ static void ntp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *a
 static void ntp_request(NTP_T *state);
 static void ntp_result(NTP_T* state, int status, time_t *result);
 static void ntp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
-//void run_ntp_test(void);
 #endif
 
 // plot_pixel
@@ -325,15 +320,6 @@ int main() {
   sleep_ms(200);
 
   // Start on Friday 5th of June 2020 15:45:00
-  //replaced with pico_aon_timer
-  // t_init.year  = 20;
-  // t_init.month = 6;
-  // t_init.day   = 5;
-  // t_init.dotw  = 5; // 0 is Sunday, so 5 is Friday
-  // t_init.hour  = 15;
-  // t_init.min   = 45;
-  // t_init.sec   = 0;
-  //replaced with pico_aon_timer
   t_init_tm.tm_year   = 120;       /* Year - 1900.         */
   t_init_tm.tm_mon    = 5;         /* Month.   [0-11]      */
   t_init_tm.tm_mday   = 5;         /* Day.     [1-31]      */
@@ -353,14 +339,12 @@ int main() {
   printf("Trying to get updated time with NTP\n");
   graphics.text("Trying to get updated time with NTP", Point(5,60), 240, 1);
   st7789.update(&graphics);
-  //sleep_ms(10000);
 
   if (cyw43_arch_init()) {
     printf("failed to initialise cyw43 arch, skipping updating the time with NTP\n");
     graphics.set_pen(RED);
     graphics.text("Failed to initialise cyw43 arch, skipping NTP", Point(5,70), 240, 1);
     st7789.update(&graphics);
-    //return 1;
   } else {
     cyw43_arch_enable_sta_mode();
     printf("Trying to connect to wifi\n");
@@ -369,13 +353,11 @@ int main() {
     st7789.update(&graphics);
 
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
-      //cyw43_arch_poll();
       cyw43_arch_deinit();
       printf("Failed to connect to wifi, skipping updating the time with NTP\n");
       graphics.set_pen(RED);
       graphics.text("Failed to connect to wifi, skipping NTP", Point(5,80), 240, 1);
       st7789.update(&graphics);
-      //return 1;
     } else {
       printf("Connected to wifi, setting up NTP...\n");
       graphics.set_pen(GREEN);
@@ -386,7 +368,6 @@ int main() {
       received_response_ntp = 0;
       state = ntp_init();
       if (!state) {
-        //return;
         printf("Failed to connect to NTP server, no updating RTC\n");
         graphics.set_pen(RED);
         graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,90), 240, 1);
@@ -461,14 +442,8 @@ int main() {
 #ifdef WITH_NTP
     if(!received_response_ntp) {
 #endif
-      // t_init.year = (int8_t)ds3231_data.year;
-      // t_init.month = (int8_t)ds3231_data.month;
-      // t_init.day = (int8_t)ds3231_data.date;
-      // t_init.dotw = (int8_t)dotw;
-      // t_init.hour = (int8_t)ds3231_data.hours;
-      // t_init.min = (int8_t)ds3231_data.minutes;
-      // t_init.sec = (int8_t)ds3231_data.seconds;
-      //replaced with pico_aon_timer
+
+      //init the t_init with the DS3231 data
       t_init_tm.tm_year = (int8_t)(ds3231_data.year + 100);
       t_init_tm.tm_mon = (int8_t)month_nb;
       t_init_tm.tm_mday = (int8_t)ds3231_data.date;
@@ -489,20 +464,16 @@ int main() {
   i2c_deinit(ds3231.i2c);
 
   // Start the RTC
-  //rtc_init(); //replaced with pico_aon_timer
-  //rtc_set_datetime(&t_init); //replaced with pico_aon_timer
-  // printf("Starting time: %d-%02d-%02d %02d:%02d:%02d\n", t_init_tm.tm_year + 1900, t_init_tm.tm_mon + 1, t_init_tm.tm_mday, t_init_tm.tm_hour, t_init_tm.tm_min, t_init_tm.tm_sec);
   aon_timer_start_calendar(&t_init_tm);
   // clk_sys is >2000x faster than clk_rtc, so datetime is not updated immediately when rtc_get_datetime() is called.
   // The delay is up to 3 RTC clock cycles (which is 64us with the default clock settings)
-  //sleep_us(64);
   sleep_us(64);
 
   // variables needed for looping
   mode = 1 ; // mode 1 is the loop on current time, mode 0 is the manual mode
   to_update = 1; // 1 means that the sky calculation needs to be updated and screen refreshed
-  button_a_pressed = 0; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
-  button_b_pressed = 0; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
+  button_a_pressed = 0; // to track press of button A. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
+  button_b_pressed = 0; // to track press of button B. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
   current_time_offset = 0;
 
   graphics.set_pen(WHITE);
@@ -561,11 +532,10 @@ int main() {
       to_update = 1;
     }
 
+    // Update is done only s update is flagged
     if (to_update) {
       // get time
       if (mode) {
-        //rtc_get_datetime(&t_init);
-        //convert_datetime_to_tm(&t_init, &tm);
         aon_timer_get_time_calendar(&tm);
         t = mktime(&tm);
       }
@@ -628,9 +598,8 @@ int main() {
       // update the screen
       st7789.update(&graphics);
 
+      //get the last time the screen was updated
       if (mode) {
-        //rtc_get_datetime(&t_init);
-        //convert_datetime_to_tm(&t_init, &tm);
         aon_timer_get_time_calendar(&tm);
         ts = mktime(&tm);
       }
@@ -640,13 +609,11 @@ int main() {
     loop = 1;
     to_update = 0;
     while (loop && mode) {
-      //rtc_get_datetime(&t_init);
       aon_timer_get_time_calendar(&tm);
       t = mktime(&tm);
       hr = tm.tm_hour;
       min = tm.tm_min;
       if (difftime(t, ts) > starmap_update_period){
-        //printf("Time difference : %d\n", difftime(t, ts));
         loop = 0;
         to_update = 1;
       }
@@ -669,7 +636,6 @@ int main() {
       }
       // switching mode with buttons
       if(button_x.raw()) { // switching mode
-        //mode = 0;
         loop = 0;
         mode = !mode;
         to_update = 1;
@@ -678,14 +644,11 @@ int main() {
         } else {
           led.set_rgb(200, 200, 200);
         }
-        //led.set_rgb(255, 0, 0);
       }
       if(button_y.raw()) { // cycling through the magnitudes
-        //mode = 1;
         loop = 0;
         to_update = 1;
         mag = (mag++ <= 5) ? mag : -1;
-        //led.set_rgb(200, 200, 200);
       }
 
       //printf("in small loop\n");
@@ -695,25 +658,6 @@ int main() {
     sleep_ms(200);
   }
   return(0);
-}
-
-void convert_datetime_to_tm(const datetime_t * source_datetime, struct tm * dest_tm) {
-  int month = source_datetime->month == 0 ? 11 : source_datetime->month - 1;
-  dest_tm->tm_sec=source_datetime->sec;   // seconds 0-61?
-  dest_tm->tm_min=source_datetime->min;  // minutes 0-59
-  dest_tm->tm_hour=source_datetime->hour;  // hour 0-23
-  dest_tm->tm_mday=source_datetime->day;  // date 1-31
-  dest_tm->tm_mon=month; // month 0-11
-  dest_tm->tm_year=source_datetime->year+100; // years since 1900. Example: 104 means 1900+104 = year 2004
-}
-
-void convert_tm_to_datetime(struct tm * source_tm, datetime_t * dest_datetime) {
-    dest_datetime->sec=source_tm->tm_sec;   // seconds 0-61?
-    dest_datetime->min=source_tm->tm_min;  // minutes 0-59
-    dest_datetime->hour=source_tm->tm_hour;  // hour 0-23
-    dest_datetime->day=source_tm->tm_mday;  // date 1-31
-    dest_datetime->month=source_tm->tm_mon+1; // month 0-11
-    dest_datetime->year=source_tm->tm_year-100; // years since 1900. Example: 104 means 1900+104 = year 2004
 }
 
 // ************** other functions *********************
