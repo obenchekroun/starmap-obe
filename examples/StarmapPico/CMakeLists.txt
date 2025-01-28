@@ -7,6 +7,7 @@ set(PICO_PLATFORM rp2040)
 
 # Set if want to use ntp
 set(WITH_NTP 1)
+set(WITH_GPS 1)
 
 # Include the Pico SDK initialization script
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
@@ -29,15 +30,21 @@ if(WITH_NTP)
 #    set(my_compile_def ${my_compile_def} WITH_NTP)
     add_compile_definitions(
         LINUX_BUILD=1
-        LWRB_DISABLE_ATOMIC # #define LWRB_DISABLE_ATOMIC as not implemented to pico (for lwrb)
+        #LWRB_DISABLE_ATOMIC # #define LWRB_DISABLE_ATOMIC as not implemented to pico (for lwrb)
         #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
         WITH_NTP
     )
 else()
     add_compile_definitions(
         LINUX_BUILD=1
-        LWRB_DISABLE_ATOMIC
         #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
+    )
+endif()
+
+if(WITH_GPS)
+        add_compile_definitions(
+            WITH_GPS
+            LWRB_DISABLE_ATOMIC # #define LWRB_DISABLE_ATOMIC as not implemented to pico (for lwrb)
     )
 endif()
 

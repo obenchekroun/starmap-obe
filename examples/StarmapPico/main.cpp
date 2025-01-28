@@ -125,6 +125,8 @@ typedef struct NTP_T_ {
 #endif
 
 //GPS
+//#define WITH_GPS
+#ifdef WITH_GPS
 #define GPS_UART_TX 0
 #define GPS_UART_RX 1
 #ifndef PICO_DEFAULT_UART_TX_PIN
@@ -140,6 +142,7 @@ typedef struct NTP_T_ {
 #define SET_NMEA_OUTPUT_ALL_DATA    "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0"
 
 #define SET_POS_FIX_400MS   "$PMTK220,400"
+#endif
 
 // ***** class based on Starmap ******
 class SM : public Starmap {
@@ -189,6 +192,7 @@ NTP_T *state;
 int received_response_ntp;
 #endif
 
+#ifdef WITH_GPS
 // GPS handling
 /* GPS handle */
 lwgps_t hgps;
@@ -205,6 +209,10 @@ const char* command_BAUDRATE_115200 = SET_NMEA_BAUDRATE_115200;
 
 static size_t write_ptr;
 
+int gps_working;
+int fix_obtained;
+#endif
+
 // ******** function prototypes ************
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
 void disp_time(int hr, int min, int x, int y, int color);
@@ -216,9 +224,11 @@ void disp_time_offset(int offset, int x, int y, int color);
 const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
 //GPS
+#ifdef WITH_GPS
 static void uart_irqhandler(void);
 void L76X_send_command(char *data);
-
+int get_fix(void);
+#endif
 //NTP functions definitions
 #ifdef WITH_NTP
 static NTP_T* ntp_init(void);
@@ -257,6 +267,7 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 int main() {
   /* Hardware initialisation */
   stdio_init_all(); // Initialize standard IO
+#ifdef WITH_GPS
   uart_init(uart0, GPS_BAUD_RATE);
   if (!uart_is_enabled(uart0)) {
     printf("Failed to init uart0");
@@ -266,7 +277,7 @@ int main() {
   gpio_init(1);
   gpio_set_function(0, GPIO_FUNC_UART); //TX
   gpio_set_function(1, GPIO_FUNC_UART); //RX
-
+#endif
   printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
 
   rect_s br; // rect used to paint the sky
@@ -285,7 +296,6 @@ int main() {
   int button_a_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
   int button_b_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
   int8_t current_time_offset; // keeping the time offset when pressing the buttons
-  uint8_t rx; //to store byte by byte rx data
 
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
@@ -510,6 +520,7 @@ int main() {
   // The delay is up to 3 RTC clock cycles (which is 64us with the default clock settings)
   sleep_us(64);
 
+#ifdef WITH_GPS
   /*Initialisation of GPS */
   lwgps_init(&hgps); //Init GPS
   lwrb_init(&hgps_buff, hgps_buff_data, sizeof(hgps_buff_data)); /* Create buffer for received data */
@@ -517,37 +528,44 @@ int main() {
   //Set output message
   L76X_send_command((char*)command_NMEA_OUTPUT);
   sleep_ms(100);
-
-  while (true) {
-    /* Add new character to buffer */
-    /* UART interrupt handler on host microcontroller */
-    uart_irqhandler();
-
-    /* Process all input data */
-    /* Read from buffer byte-by-byte and call processing function */
-    if (lwrb_get_full(&hgps_buff)) {        /* Check if anything in buffer now */
-      while (lwrb_read(&hgps_buff, &rx, 1) == 1) {
-        lwgps_process(&hgps, &rx, 1);   /* Process byte-by-byte */
-      }
-    } else {
-      /* Print all data after successful processing */
-      printf("\n--------------------------------------\nData received\n-----------------------------------\n");
-      printf("Data received :\n");
-      printf("%s\n", buff_t);
-      printf("From lwGPS : \n");
-      printf("        Valid status :%d\r\n", hgps.is_valid);
-      printf("        Latitude: %f degrees\r\n", hgps.latitude);
-      printf("        Longitude: %f degrees\r\n", hgps.longitude);
-      printf("        Altitude: %f meters\r\n", hgps.altitude);
-      //break;
-      // GPS = L76X_Gat_GNRMC();
-      // printf("From Waveshare parser :\n");
-      // printf("          Time: %d:%d:%d \r\n", GPS.Time_H, GPS.Time_M, GPS.Time_S);
-      // printf("          Latitude and longitude: %lf  %c  %lf  %c\r\n", GPS.Lat, GPS.Lat_area, GPS.Lon, GPS.Lon_area);
-      sleep_ms(10000);
-    }
+  if(get_fix()) {
+    starmap.lon
   }
+#endif
 
+#ifdef WITH_GPS
+  // while (true) {
+  //   /* Add new character to buffer */
+  //   /* UART interrupt handler on host microcontroller */
+  //   uart_irqhandler();
+
+  //   /* Process all input data */
+  //   /* Read from buffer byte-by-byte and call processing function */
+  //   if (lwrb_get_full(&hgps_buff)) {        /* Check if anything in buffer now */
+  //     while (lwrb_read(&hgps_buff, &rx, 1) == 1) {
+  //       lwgps_process(&hgps, &rx, 1);   /* Process byte-by-byte */
+  //     }
+  //   } else {
+  //     /* Print all data after successful processing */
+  //     printf("\n--------------------------------------\nData received\n-----------------------------------\n");
+  //     printf("Data received :\n");
+  //     printf("%s\n", buff_t);
+  //     printf("From lwGPS : \n");
+  //     printf("        Valid status :%d\r\n", hgps.is_valid);
+  //     printf("        Latitude: %f degrees\r\n", hgps.latitude);
+  //     printf("        Longitude: %f degrees\r\n", hgps.longitude);
+  //     printf("        Altitude: %f meters\r\n", hgps.altitude);
+  //     //break;
+  //     // GPS = L76X_Gat_GNRMC();
+  //     // printf("From Waveshare parser :\n");
+  //     // printf("          Time: %d:%d:%d \r\n", GPS.Time_H, GPS.Time_M, GPS.Time_S);
+  //     // printf("          Latitude and longitude: %lf  %c  %lf  %c\r\n", GPS.Lat, GPS.Lat_area, GPS.Lon, GPS.Lon_area);
+  //     sleep_ms(10000);
+  //   }
+  // }
+  sleep_ms(10000);
+  get_fix();
+#endif
 
   /* Starting main loop */
   // variables needed for looping
@@ -1077,6 +1095,7 @@ static NTP_T* ntp_init(void) {
 #endif
 
 //GPS related function
+#ifdef WITH_GPS
 static void uart_irqhandler(void) {
     /* Make interrupt handler as fast as possible */
     /* Only write to received buffer and process later */
@@ -1110,6 +1129,33 @@ void L76X_send_command(char *data)
     sleep_ms(200);
 }
 
+int get_fix(void) {
+  uint8_t rx; //to store byte by byte rx data
+  /* Add new character to buffer */
+  /* UART interrupt handler on host microcontroller */
+  while (true) {
+    uart_irqhandler();
+
+    /* Process all input data */
+    /* Read from buffer byte-by-byte and call processing function */
+    if (lwrb_get_full(&hgps_buff)) {        /* Check if anything in buffer now */
+      while (lwrb_read(&hgps_buff, &rx, 1) == 1) {
+        lwgps_process(&hgps, &rx, 1);   /* Process byte-by-byte */
+      }
+    } else {
+      /* Print all data after successful processing */
+      printf("GPS data received :\n");
+      //printf("%s\n", buff_t);
+      printf("        Valid status :%d\r\n", hgps.is_valid);
+      printf("        Latitude: %f degrees\r\n", hgps.latitude);
+      printf("        Longitude: %f degrees\r\n", hgps.longitude);
+      printf("        Altitude: %f meters\r\n", hgps.altitude);
+      break;
+    }
+  }
+  return hgps.is_valid;
+}
+#endif
 // ************ Yale star data *****************
 
 // format:  Note: BYTE-PACKED!!! So don't use this struct!!!
