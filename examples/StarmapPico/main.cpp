@@ -16,7 +16,8 @@
 #include <cstdlib>
 
 // RTC
-#include "hardware/rtc.h"
+//#include "hardware/rtc.h" //replaced with pico_aon_timer
+#include "pico/aon_timer.h"
 #include "pico/stdlib.h"
 #include "pico/util/datetime.h"
 //DS3231 lib
@@ -38,6 +39,7 @@ extern "C" {
 #include "libraries/pico_graphics/pico_graphics.hpp"
 #include "rgbled.hpp"
 #include "button.hpp"
+
 // GPS handling libraries
 #include "lwgps/lwgps.h"
 
@@ -160,13 +162,15 @@ uint8_t b;
 //ds3231
 ds3231_t ds3231;
 // datetime variable to store rtc initialisation
-datetime_t t_init;
+//datetime_t t_init;
+struct tm t_init_tm;
 
-#ifdef WITH_NTP
 // NTP
+#ifdef WITH_NTP
 NTP_T *state;
 int received_response_ntp;
 #endif
+
 // ******** function prototypes ************
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
 void disp_time(int hr, int min, int x, int y, int color);
@@ -217,14 +221,14 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 
 // ************* main code *****************
 int main() {
-    stdio_init_all(); // Initialize standard IO
-    // int k = 3;
-    // while (k >= 0) {
-    //     printf("Testing in %d sec...\n", k);
-    //     k--;
-    //     sleep_ms(1000);
-    // }
-    printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
+  stdio_init_all(); // Initialize standard IO
+  // int k = 3;
+  // while (k >= 0) {
+  //     printf("Testing in %d sec...\n", k);
+  //     k--;
+  //     sleep_ms(1000);
+  // }
+  printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
 
   rect_s br; // rect used to paint the sky
   //int i, j;
@@ -236,6 +240,7 @@ int main() {
   time_t ts; // timestamp to check if period delay of update has passed
   struct tm tm; // structure for the time
   int dotw; //day of the week
+  int month_nb; //month
   int loop; // 1 for loop of time updating running, 0 to update image
   int mode; //1 for auto mode, 0 for manual mode
   int to_update; // when update of skymap is needed
@@ -294,17 +299,17 @@ int main() {
   st7789.update(&graphics);
   char datetime_buf[256];
   /* Define structure to get time */
-    ds3231_data_t ds3231_data = {
-        .seconds = 25,
-        .minutes = 23,
-        .hours = 23,
-        .am_pm = false,
-        .day = 4,
-        .date = 10,
-        .month = 8,
-        .century = 1,
-        .year = 23
-    };
+  ds3231_data_t ds3231_data = {
+     .seconds = 25,
+     .minutes = 23,
+     .hours = 23,
+     .am_pm = false,
+     .day = 4,
+     .date = 10,
+     .month = 8,
+     .century = 1,
+     .year = 23
+};
   //ds3231_t ds3231;
   /* Initiliaze ds3231 struct. */
   ds3231_init(&ds3231, i2c_default, DS3231_DEVICE_ADRESS, AT24C32_EEPROM_ADRESS_0);
@@ -319,152 +324,163 @@ int main() {
   i2c_init(ds3231.i2c, 400 * 1000);
   sleep_ms(200);
 
-    // Start on Friday 5th of June 2020 15:45:00
-  //   datetime_t t_init = {
-  //           .year  = 20,
-  //           .month = 6,
-  //           .day   = 5,
-  //           .dotw  = 5, // 0 is Sunday, so 5 is Friday
-  //           .hour  = 15,
-  //           .min   = 45,
-  //           .sec   = 0
-  // };
-            t_init.year  = 20;
-            t_init.month = 6;
-            t_init.day   = 5;
-            t_init.dotw  = 5; // 0 is Sunday, so 5 is Friday
-            t_init.hour  = 15;
-            t_init.min   = 45;
-            t_init.sec   = 0;
+  // Start on Friday 5th of June 2020 15:45:00
+  //replaced with pico_aon_timer
+  // t_init.year  = 20;
+  // t_init.month = 6;
+  // t_init.day   = 5;
+  // t_init.dotw  = 5; // 0 is Sunday, so 5 is Friday
+  // t_init.hour  = 15;
+  // t_init.min   = 45;
+  // t_init.sec   = 0;
+  //replaced with pico_aon_timer
+  t_init_tm.tm_year   = 120;       /* Year - 1900.         */
+  t_init_tm.tm_mon    = 5;         /* Month.   [0-11]      */
+  t_init_tm.tm_mday   = 5;         /* Day.     [1-31]      */
+  t_init_tm.tm_wday   = 5;         /* Day of week. [0-6]   */ // 0 is Sunday, so 5 is Friday
+  t_init_tm.tm_hour   = 15;        /* Hours.   [0-23]      */
+  t_init_tm.tm_min    = 45;        /* Minutes. [0-59]      */
+  t_init_tm.tm_sec    = 0;         /* Seconds. [0-60] 1 leap second */
 
-      printf("DS3231 initialized !\n");
-      graphics.set_pen(GREEN);
-      graphics.text("DS3231 initialized !", Point(5,50), 240, 1);
-      st7789.update(&graphics);
+  printf("DS3231 initialized !\n");
+  graphics.set_pen(GREEN);
+  graphics.text("DS3231 initialized !", Point(5,50), 240, 1);
+  st7789.update(&graphics);
 
 #ifdef WITH_NTP
-    // NTP attempt
-    graphics.set_pen(WHITE);
-    printf("Trying to get updated time with NTP\n");
-    graphics.text("Trying to get updated time with NTP", Point(5,60), 240, 1);
+  // NTP attempt
+  graphics.set_pen(WHITE);
+  printf("Trying to get updated time with NTP\n");
+  graphics.text("Trying to get updated time with NTP", Point(5,60), 240, 1);
+  st7789.update(&graphics);
+  //sleep_ms(10000);
+
+  if (cyw43_arch_init()) {
+    printf("failed to initialise cyw43 arch, skipping updating the time with NTP\n");
+    graphics.set_pen(RED);
+    graphics.text("Failed to initialise cyw43 arch, skipping NTP", Point(5,70), 240, 1);
     st7789.update(&graphics);
-    //sleep_ms(10000);
+    //return 1;
+  } else {
+    cyw43_arch_enable_sta_mode();
+    printf("Trying to connect to wifi\n");
+    graphics.set_pen(WHITE);
+    graphics.text("Trying to connect to wifi", Point(5,70), 240, 1);
+    st7789.update(&graphics);
 
-    if (cyw43_arch_init()) {
-        printf("failed to initialise cyw43 arch, skipping updating the time with NTP\n");
-        graphics.set_pen(RED);
-        graphics.text("Failed to initialise cyw43 arch, skipping NTP", Point(5,70), 240, 1);
-        st7789.update(&graphics);
-        //return 1;
+    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+      //cyw43_arch_poll();
+      cyw43_arch_deinit();
+      printf("Failed to connect to wifi, skipping updating the time with NTP\n");
+      graphics.set_pen(RED);
+      graphics.text("Failed to connect to wifi, skipping NTP", Point(5,80), 240, 1);
+      st7789.update(&graphics);
+      //return 1;
     } else {
-        cyw43_arch_enable_sta_mode();
-        printf("Trying to connect to wifi\n");
-        graphics.set_pen(WHITE);
-        graphics.text("Trying to connect to wifi", Point(5,70), 240, 1);
+      printf("Connected to wifi, setting up NTP...\n");
+      graphics.set_pen(GREEN);
+      graphics.text("Connected to wifi, setting up NTP ...", Point(5,80), 240, 1);
+      st7789.update(&graphics);
+
+      int nb_attempt = 5;
+      received_response_ntp = 0;
+      state = ntp_init();
+      if (!state) {
+        //return;
+        printf("Failed to connect to NTP server, no updating RTC\n");
+        graphics.set_pen(RED);
+        graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,90), 240, 1);
         st7789.update(&graphics);
+      } else {
+        graphics.set_pen(WHITE);
+        graphics.text("Attempt to get NTP response...", Point(5,90), 240, 1);
+        st7789.update(&graphics);
+        while(nb_attempt > 0 && !received_response_ntp) {
+          printf("Attempt to get NTP response n°%i\n", nb_attempt);
+          if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
+            // Set alarm in case udp requests are lost
+            state->ntp_resend_alarm = add_alarm_in_ms(NTP_RESEND_TIME, ntp_failed_handler, state, true);
 
-        if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
-            //cyw43_arch_poll();
-            cyw43_arch_deinit();
-            printf("Failed to connect to wifi, skipping updating the time with NTP\n");
-            graphics.set_pen(RED);
-            graphics.text("Failed to connect to wifi, skipping NTP", Point(5,80), 240, 1);
-            st7789.update(&graphics);
-            //return 1;
-        } else {
-            printf("Connected to wifi, setting up NTP...\n");
-            graphics.set_pen(GREEN);
-            graphics.text("Connected to wifi, setting up NTP ...", Point(5,80), 240, 1);
-            st7789.update(&graphics);
+            // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
+            // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
+            // these calls are a no-op and can be omitted, but it is a good practice to use them in
+            // case you switch the cyw43_arch type later.
+            cyw43_arch_lwip_begin();
+            int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
+            cyw43_arch_lwip_end();
 
-            int nb_attempt = 5;
-            received_response_ntp = 0;
-            state = ntp_init();
-            if (!state) {
-                //return;
-                printf("Failed to connect to NTP server, no updating RTC\n");
-                graphics.set_pen(RED);
-                graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,90), 240, 1);
-                st7789.update(&graphics);
-            } else {
-                graphics.set_pen(WHITE);
-                graphics.text("Attempt to get NTP response...", Point(5,90), 240, 1);
-                st7789.update(&graphics);
-                while(nb_attempt > 0 && !received_response_ntp) {
-                    printf("Attempt to get NTP response n°%i\n", nb_attempt);
-                    if (absolute_time_diff_us(get_absolute_time(), state->ntp_test_time) < 0 && !state->dns_request_sent) {
-                        // Set alarm in case udp requests are lost
-                        state->ntp_resend_alarm = add_alarm_in_ms(NTP_RESEND_TIME, ntp_failed_handler, state, true);
-
-                        // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
-                        // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
-                        // these calls are a no-op and can be omitted, but it is a good practice to use them in
-                        // case you switch the cyw43_arch type later.
-                        cyw43_arch_lwip_begin();
-                        int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
-                        cyw43_arch_lwip_end();
-
-                        state->dns_request_sent = true;
-                        if (err == ERR_OK) {
-                            //received_response_ntp = 1;
-                            ntp_request(state); // Cached result
-                        } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
-                            printf("dns request failed\n");
-                            ntp_result(state, -1, NULL);
-                        }
-                    }
-#if PICO_CYW43_ARCH_POLL
-                    // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
-                    // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
-                    cyw43_arch_poll();
-                    // you can poll as often as you like, however if you have nothing else to do you can
-                    // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
-                    cyw43_arch_wait_for_work_until(state->dns_request_sent ? at_the_end_of_time : state->ntp_test_time);
-#else
-                    // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
-                    // is done via interrupt in the background. This sleep is just an example of some (blocking)
-                    // work you might be doing.
-                    sleep_ms(1000);
-#endif
-                    nb_attempt--;
-                }
+            state->dns_request_sent = true;
+            if (err == ERR_OK) {
+              //received_response_ntp = 1;
+              ntp_request(state); // Cached result
+            } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
+              printf("dns request failed\n");
+              ntp_result(state, -1, NULL);
             }
-            free(state);
-            cyw43_arch_deinit();
+          }
+#if PICO_CYW43_ARCH_POLL
+          // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
+          // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
+          cyw43_arch_poll();
+          // you can poll as often as you like, however if you have nothing else to do you can
+          // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
+          cyw43_arch_wait_for_work_until(state->dns_request_sent ? at_the_end_of_time : state->ntp_test_time);
+#else
+          // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
+          // is done via interrupt in the background. This sleep is just an example of some (blocking)
+          // work you might be doing.
+          sleep_ms(1000);
+#endif
+          nb_attempt--;
         }
+      }
+      free(state);
+      cyw43_arch_deinit();
     }
+  }
 #endif
 
   /* Read the time registers of DS3231. */
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
-      printf("DS3231 not available, reverting to default time\n");
-      graphics.set_pen(RED);
-      graphics.text("DS3231 not available, reverting to default time", Point(5,110), 240, 1);
-      st7789.update(&graphics);
+    printf("DS3231 not available, reverting to default time\n");
+    graphics.set_pen(RED);
+    graphics.text("DS3231 not available, reverting to default time", Point(5,110), 240, 1);
+    st7789.update(&graphics);
 
-      } else {
-          dotw = ds3231_data.day == 0 ? 6 : ds3231_data.day - 1;
-          printf("Time read from RTC DS3231 : %02u:%02u:%02u    %10s    %02u/%02u/20%02u\n",
-             ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
-             days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
-          graphics.set_pen(GREEN);
-          graphics.text("Time obtained from DS3231!", Point(5,120), 240, 1);
-          st7789.update(&graphics);
+  } else {
+    dotw = ds3231_data.day == 0 ? 6 : ds3231_data.day - 1;
+    month_nb = ds3231_data.month == 0 ? 11 : ds3231_data.month - 1;
+
+    printf("Time read from RTC DS3231 : %02u:%02u:%02u    %10s    %02u/%02u/20%02u\n",
+           ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
+           days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
+    graphics.set_pen(GREEN);
+    graphics.text("Time obtained from DS3231!", Point(5,120), 240, 1);
+    st7789.update(&graphics);
 
 #ifdef WITH_NTP
-          if(!received_response_ntp) {
+    if(!received_response_ntp) {
 #endif
-            t_init.year = (int8_t)ds3231_data.year;
-            t_init.month = (int8_t)ds3231_data.month;
-            t_init.day = (int8_t)ds3231_data.date;
-            t_init.dotw = (int8_t)dotw;
-            t_init.hour = (int8_t)ds3231_data.hours;
-            t_init.min = (int8_t)ds3231_data.minutes;
-            t_init.sec = (int8_t)ds3231_data.seconds;
-            graphics.set_pen(GREEN);
-            graphics.text("DS3231 time set to RTC !", Point(5,130), 240, 1);
+      // t_init.year = (int8_t)ds3231_data.year;
+      // t_init.month = (int8_t)ds3231_data.month;
+      // t_init.day = (int8_t)ds3231_data.date;
+      // t_init.dotw = (int8_t)dotw;
+      // t_init.hour = (int8_t)ds3231_data.hours;
+      // t_init.min = (int8_t)ds3231_data.minutes;
+      // t_init.sec = (int8_t)ds3231_data.seconds;
+      //replaced with pico_aon_timer
+      t_init_tm.tm_year = (int8_t)(ds3231_data.year + 100);
+      t_init_tm.tm_mon = (int8_t)month_nb;
+      t_init_tm.tm_mday = (int8_t)ds3231_data.date;
+      t_init_tm.tm_wday = (int8_t)dotw;
+      t_init_tm.tm_hour = (int8_t)ds3231_data.hours;
+      t_init_tm.tm_min = (int8_t)ds3231_data.minutes;
+      t_init_tm.tm_sec = (int8_t)ds3231_data.seconds;
+
+      graphics.set_pen(GREEN);
+      graphics.text("DS3231 time set to RTC !", Point(5,130), 240, 1);
 #ifdef WITH_NTP
-          }
+    }
 #endif
 
   }
@@ -473,11 +489,13 @@ int main() {
   i2c_deinit(ds3231.i2c);
 
   // Start the RTC
-
-  rtc_init();
-  rtc_set_datetime(&t_init);
+  //rtc_init(); //replaced with pico_aon_timer
+  //rtc_set_datetime(&t_init); //replaced with pico_aon_timer
+  // printf("Starting time: %d-%02d-%02d %02d:%02d:%02d\n", t_init_tm.tm_year + 1900, t_init_tm.tm_mon + 1, t_init_tm.tm_mday, t_init_tm.tm_hour, t_init_tm.tm_min, t_init_tm.tm_sec);
+  aon_timer_start_calendar(&t_init_tm);
   // clk_sys is >2000x faster than clk_rtc, so datetime is not updated immediately when rtc_get_datetime() is called.
   // The delay is up to 3 RTC clock cycles (which is 64us with the default clock settings)
+  //sleep_us(64);
   sleep_us(64);
 
   // variables needed for looping
@@ -493,195 +511,200 @@ int main() {
   sleep_ms(2000);
 
   while(FOREVER){
-      // switching mode with button X
-      if(button_x.raw()) { // Switching mode
-          mode = !mode;
-          to_update = 1;
-          if (!mode) {
-              led.set_rgb(255, 0, 0);
-          } else {
-              led.set_rgb(200, 200, 200);
-          }
+    // switching mode with button X
+    if(button_x.raw()) { // Switching mode
+      mode = !mode;
+      to_update = 1;
+      if (!mode) {
+        led.set_rgb(255, 0, 0);
+      } else {
+        led.set_rgb(200, 200, 200);
       }
+    }
 
-      // Button y allows cycling throug magnitudes
-      if(button_y.raw()) { // cycling through the magnitudes
-          to_update = 1;
-          mag = (mag++ <= 5) ? mag : -1;
-      }
+    // Button y allows cycling throug magnitudes
+    if(button_y.raw()) { // cycling through the magnitudes
+      to_update = 1;
+      mag = (mag++ <= 5) ? mag : -1;
+    }
 
-      // Button A and B allows to -1 or +1 resp .the current hour
-      // to avoid lagging, we wait for the release of the button in order to update the sky
-      // we paint the current offset on the screen
-      while (button_a.raw() && !mode && abs(current_time_offset) < 127) {
-          tm.tm_hour = tm.tm_hour-1;
-          current_time_offset = current_time_offset - 1;
-          disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, RED_COLOR);
-          st7789.update(&graphics);
-          button_a_pressed = 1;
-          sleep_ms(200);
-      }
-      if (!button_a.raw() && !mode && button_a_pressed) {
-          button_a_pressed = 0;
-          current_time_offset = 0;
-          mktime(&tm);
-          to_update = 1;
-      }
-
-      while (button_b.raw() && !mode && abs(current_time_offset) < 127) {
-          tm.tm_hour = tm.tm_hour+1;
-          current_time_offset = current_time_offset + 1;
-          disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, GREEN_COLOR);
-          st7789.update(&graphics);
-          button_b_pressed = 1;
-          sleep_ms(200);
-      }
-      if (!button_b.raw() && !mode && button_b_pressed) {
-          button_b_pressed = 0;
-          current_time_offset = 0;
-          mktime(&tm);
-          to_update = 1;
-      }
-
-      if (to_update) {
-          // get time
-          if (mode) {
-              rtc_get_datetime(&t_init);
-              convert_datetime_to_tm(&t_init, &tm);
-              t = mktime(&tm);
-          }
-          hr = tm.tm_hour;
-          min = tm.tm_min;
-
-          printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
-
-          mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
-          mytime.tm_min=tm.tm_min;  // minutes 0-59
-          mytime.tm_hour=tm.tm_hour;  // hour 0-23
-          mytime.tm_mday=tm.tm_mday;  // date 1-31
-          mytime.tm_mon=tm.tm_mon; // month 0-11
-          mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
-
-          starmap.jdtime=starmap.jtime(&mytime);
-          nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
-          snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
-
-          starmap.siteLat = 33.589886; // casablanca, Morocco
-          starmap.siteLon = -7.603869; // Casablanca, Morocco
-
-          // Setting up the rectangle for Starmap class
-          br.left=0;
-          br.right=TFT_W;
-          br.top=0;
-          br.bottom=TFT_H;
-
-          //Clearing the image
-          graphics.set_pen(BLACK);
-          graphics.clear();
-          st7789.update(&graphics);
-
-          starmap.set_col(1);
-          starmap.do_constellation_text = 0;
-          // Painting the sky
-          starmap.paintSky(mag, &br);
-
-          // Draw compass on screen
-          disp_NESW((char*)"N", 115,30,NESW_COLOR);
-          disp_NESW((char*)"E", 10,155,NESW_COLOR);
-          disp_NESW((char*)"S", 115,270,NESW_COLOR);
-          disp_NESW((char*)"W", 224,155,NESW_COLOR);
-
-          // Draw lat and long on screen
-          lat = starmap.siteLat;
-          lon = starmap.siteLon;
-          disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
-          // Draw time on screen
-          disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
-          // Draw date
-          disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
-          //draw magnitude
-          disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
-          // draw MANUAL
-          if (!mode) {
-              disp_manual_mode(X_POS_MANUAL,Y_POS_MANUAL,RED_COLOR);
-          }
-
-          // update the screen
-          st7789.update(&graphics);
-
-          if (mode) {
-              rtc_get_datetime(&t_init);
-              convert_datetime_to_tm(&t_init, &tm);
-              ts = mktime(&tm);
-          }
-      }
-
-      loop = 1;
-      to_update = 0;
-      while (loop && mode) {
-          rtc_get_datetime(&t_init);
-          convert_datetime_to_tm(&t_init, &tm);
-          t = mktime(&tm);
-          hr = tm.tm_hour;
-          min = tm.tm_min;
-          if (difftime(t, ts) > starmap_update_period){
-              loop = 0;
-              to_update = 1;
-          }
-
-          if (min != old_min) {
-              old_min = min;
-              printf("updating the time\n");
-              // Draw lat and long on screen
-              lat = starmap.siteLat;
-              lon = starmap.siteLon;
-              disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
-              // Draw time
-              disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
-              // Draw date
-              disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
-              //draw magnitude
-              disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
-              // Displaying the image
-              st7789.update(&graphics);
-          }
-          // switching mode with buttons
-          if(button_x.raw()) { // switching mode
-              //mode = 0;
-              loop = 0;
-              mode = !mode;
-              to_update = 1;
-              if (!mode) {
-                  led.set_rgb(255, 0, 0);
-              } else {
-                  led.set_rgb(200, 200, 200);
-              }
-              //led.set_rgb(255, 0, 0);
-          }
-          if(button_y.raw()) { // cycling through the magnitudes
-              //mode = 1;
-              loop = 0;
-              to_update = 1;
-              mag = (mag++ <= 5) ? mag : -1;
-              //led.set_rgb(200, 200, 200);
-          }
-
-          //printf("in small loop\n");
-          sleep_ms(200);
-      }
-      //printf("in big loop\n");
+    // Button A and B allows to -1 or +1 resp .the current hour
+    // to avoid lagging, we wait for the release of the button in order to update the sky
+    // we paint the current offset on the screen
+    while (button_a.raw() && !mode && abs(current_time_offset) < 127) {
+      tm.tm_hour = tm.tm_hour-1;
+      current_time_offset = current_time_offset - 1;
+      disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, RED_COLOR);
+      st7789.update(&graphics);
+      button_a_pressed = 1;
       sleep_ms(200);
+    }
+    if (!button_a.raw() && !mode && button_a_pressed) {
+      button_a_pressed = 0;
+      current_time_offset = 0;
+      mktime(&tm);
+      to_update = 1;
+    }
+
+    while (button_b.raw() && !mode && abs(current_time_offset) < 127) {
+      tm.tm_hour = tm.tm_hour+1;
+      current_time_offset = current_time_offset + 1;
+      disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, GREEN_COLOR);
+      st7789.update(&graphics);
+      button_b_pressed = 1;
+      sleep_ms(200);
+    }
+    if (!button_b.raw() && !mode && button_b_pressed) {
+      button_b_pressed = 0;
+      current_time_offset = 0;
+      mktime(&tm);
+      to_update = 1;
+    }
+
+    if (to_update) {
+      // get time
+      if (mode) {
+        //rtc_get_datetime(&t_init);
+        //convert_datetime_to_tm(&t_init, &tm);
+        aon_timer_get_time_calendar(&tm);
+        t = mktime(&tm);
+      }
+      hr = tm.tm_hour;
+      min = tm.tm_min;
+
+      printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
+
+      mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
+      mytime.tm_min=tm.tm_min;  // minutes 0-59
+      mytime.tm_hour=tm.tm_hour;  // hour 0-23
+      mytime.tm_mday=tm.tm_mday;  // date 1-31
+      mytime.tm_mon=tm.tm_mon; // month 0-11
+      mytime.tm_year=tm.tm_year; // years since 1900. Example: 104 means 1900+104 = year 2004
+
+      starmap.jdtime=starmap.jtime(&mytime);
+      nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
+      snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
+
+      starmap.siteLat = 33.589886; // casablanca, Morocco
+      starmap.siteLon = -7.603869; // Casablanca, Morocco
+
+      // Setting up the rectangle for Starmap class
+      br.left=0;
+      br.right=TFT_W;
+      br.top=0;
+      br.bottom=TFT_H;
+
+      //Clearing the image
+      graphics.set_pen(BLACK);
+      graphics.clear();
+      st7789.update(&graphics);
+
+      starmap.set_col(1);
+      starmap.do_constellation_text = 0;
+      // Painting the sky
+      starmap.paintSky(mag, &br);
+
+      // Draw compass on screen
+      disp_NESW((char*)"N", 115,30,NESW_COLOR);
+      disp_NESW((char*)"E", 10,155,NESW_COLOR);
+      disp_NESW((char*)"S", 115,270,NESW_COLOR);
+      disp_NESW((char*)"W", 224,155,NESW_COLOR);
+
+      // Draw lat and long on screen
+      lat = starmap.siteLat;
+      lon = starmap.siteLon;
+      disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
+      // Draw time on screen
+      disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
+      // Draw date
+      disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
+      //draw magnitude
+      disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
+      // draw MANUAL
+      if (!mode) {
+        disp_manual_mode(X_POS_MANUAL,Y_POS_MANUAL,RED_COLOR);
+      }
+
+      // update the screen
+      st7789.update(&graphics);
+
+      if (mode) {
+        //rtc_get_datetime(&t_init);
+        //convert_datetime_to_tm(&t_init, &tm);
+        aon_timer_get_time_calendar(&tm);
+        ts = mktime(&tm);
+      }
+    }
+
+    // LOOP of updating the time
+    loop = 1;
+    to_update = 0;
+    while (loop && mode) {
+      //rtc_get_datetime(&t_init);
+      aon_timer_get_time_calendar(&tm);
+      t = mktime(&tm);
+      hr = tm.tm_hour;
+      min = tm.tm_min;
+      if (difftime(t, ts) > starmap_update_period){
+        //printf("Time difference : %d\n", difftime(t, ts));
+        loop = 0;
+        to_update = 1;
+      }
+
+      if (min != old_min) {
+        old_min = min;
+        printf("updating the time\n");
+        // Draw lat and long on screen
+        lat = starmap.siteLat;
+        lon = starmap.siteLon;
+        disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
+        // Draw time
+        disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
+        // Draw date
+        disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
+        //draw magnitude
+        disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
+        // Displaying the image
+        st7789.update(&graphics);
+      }
+      // switching mode with buttons
+      if(button_x.raw()) { // switching mode
+        //mode = 0;
+        loop = 0;
+        mode = !mode;
+        to_update = 1;
+        if (!mode) {
+          led.set_rgb(255, 0, 0);
+        } else {
+          led.set_rgb(200, 200, 200);
+        }
+        //led.set_rgb(255, 0, 0);
+      }
+      if(button_y.raw()) { // cycling through the magnitudes
+        //mode = 1;
+        loop = 0;
+        to_update = 1;
+        mag = (mag++ <= 5) ? mag : -1;
+        //led.set_rgb(200, 200, 200);
+      }
+
+      //printf("in small loop\n");
+      sleep_ms(200);
+    }
+    //printf("in big loop\n");
+    sleep_ms(200);
   }
   return(0);
 }
 
 void convert_datetime_to_tm(const datetime_t * source_datetime, struct tm * dest_tm) {
-    dest_tm->tm_sec=source_datetime->sec;   // seconds 0-61?
-    dest_tm->tm_min=source_datetime->min;  // minutes 0-59
-    dest_tm->tm_hour=source_datetime->hour;  // hour 0-23
-    dest_tm->tm_mday=source_datetime->day;  // date 1-31
-    dest_tm->tm_mon=source_datetime->month-1; // month 0-11
-    dest_tm->tm_year=source_datetime->year+100; // years since 1900. Example: 104 means 1900+104 = year 2004
+  int month = source_datetime->month == 0 ? 11 : source_datetime->month - 1;
+  dest_tm->tm_sec=source_datetime->sec;   // seconds 0-61?
+  dest_tm->tm_min=source_datetime->min;  // minutes 0-59
+  dest_tm->tm_hour=source_datetime->hour;  // hour 0-23
+  dest_tm->tm_mday=source_datetime->day;  // date 1-31
+  dest_tm->tm_mon=month; // month 0-11
+  dest_tm->tm_year=source_datetime->year+100; // years since 1900. Example: 104 means 1900+104 = year 2004
 }
 
 void convert_tm_to_datetime(struct tm * source_tm, datetime_t * dest_datetime) {
@@ -912,7 +935,7 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         mktime(utc);
         printf("got ntp response: %02d/%02d/%04d %02d:%02d:%02d\n", utc->tm_mday, utc->tm_mon + 1, utc->tm_year + 1900,
                utc->tm_hour, utc->tm_min, utc->tm_sec);
-        //t = mktime(&utc)
+
         ds3231_data_t ds3231_data_ntp = {
           .seconds = (uint8_t)utc->tm_sec,
           .minutes = (uint8_t)utc->tm_min,
@@ -931,7 +954,8 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         st7789.update(&graphics);
 
         // putting time from ntp in t_init to initialize pico RTC
-        convert_tm_to_datetime(utc, &t_init);
+        //convert_tm_to_datetime(utc, &t_init);
+        t_init_tm = *utc;
         printf("NTP time converted to initialize RTC !\n");
         graphics.set_pen(GREEN);
         graphics.text("NTP time converted to initialize RTC!", Point(5,110), 240, 1);

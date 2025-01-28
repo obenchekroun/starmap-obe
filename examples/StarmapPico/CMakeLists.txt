@@ -6,7 +6,7 @@ set(PICO_BOARD pico_w)
 set(PICO_PLATFORM rp2040)
 
 # Set if want to use ntp
-set(WITH_NTP 0)
+set(WITH_NTP 1)
 
 # Include the Pico SDK initialization script
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
@@ -91,7 +91,7 @@ set(my_lib
      pico_display_2
      st7789
      pico_graphics
-     hardware_rtc
+     pico_aon_timer
      pico_ds3231
      #pico_cyw43_arch_lwip_threadsafe_background
      lwgps
