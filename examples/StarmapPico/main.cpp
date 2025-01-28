@@ -529,7 +529,7 @@ int main() {
   L76X_send_command((char*)command_NMEA_OUTPUT);
   sleep_ms(100);
   if(get_fix()) {
-    starmap.lon
+    // starmap.lon
   }
 #endif
 
