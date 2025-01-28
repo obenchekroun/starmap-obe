@@ -29,12 +29,14 @@ if(WITH_NTP)
 #    set(my_compile_def ${my_compile_def} WITH_NTP)
     add_compile_definitions(
         LINUX_BUILD=1
+        LWRB_DISABLE_ATOMIC # #define LWRB_DISABLE_ATOMIC as not implemented to pico (for lwrb)
         #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
         WITH_NTP
     )
 else()
     add_compile_definitions(
         LINUX_BUILD=1
+        LWRB_DISABLE_ATOMIC
         #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
     )
 endif()
@@ -47,10 +49,11 @@ add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789 build/st778
 add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_2 build/pico_display_2) # Pico dislay pack 2 lib
 add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_graphics build/pico_graphics) # Pico graphics lib
 add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/common build/common) # Common dependencies for pimoroni libraries
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled build/rgbled) # Managing buttons of display pack 2
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled build/rgbled) # Managing led of display pack 2
 add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/button build/button) # Managing buttons of display pack 2
 add_subdirectory(../../lib/pico-ds3231 build/pico-ds3231) # DS3231 lib & drivers
-add_subdirectory(../../lib/lwgps build/lwgps) #
+add_subdirectory(../../lib/lwgps build/lwgps) # gps NMEA parser
+add_subdirectory(../../lib/lwrb build/lwrb) #ring buffer for the gps parser
 
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789)
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_2)
@@ -62,6 +65,8 @@ include_directories(../../lib/pico-ds3231)
 include_directories(../../lib/ntp)
 include_directories(../../lib/lwgps/src/lwgps)
 include_directories(../../lib/lwgps/src/include/lwgps)
+include_directories(../../lib/lwrb/src/lwrb)
+include_directories(../../lib/lwrb/src/include/lwrb)
 
 # Add your executable and source files
 add_executable(${PROJECT_NAME}
@@ -95,6 +100,7 @@ set(my_lib
      pico_ds3231
      #pico_cyw43_arch_lwip_threadsafe_background
      lwgps
+     lwrb
 )
 
 if(WITH_NTP)

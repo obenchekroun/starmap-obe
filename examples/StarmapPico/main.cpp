@@ -18,11 +18,12 @@
 //#include "hardware/rtc.h" //replaced with pico_aon_timer
 #include "pico/aon_timer.h" //replacing hardware_rtc with so it works on both RP2350 and RP2040
 #include "pico/stdlib.h"
-//#include "pico/util/datetime.h"
+
 //DS3231 lib
 extern "C" {
    #include "ds3231.h"
 }
+
 // NTP client
 #if WITH_NTP
 #include "pico/cyw43_arch.h"
@@ -40,7 +41,9 @@ extern "C" {
 #include "button.hpp"
 
 // GPS handling libraries
+#include "hardware/uart.h"
 #include "lwgps/lwgps.h"
+#include "lwrb/lwrb.h"
 
 using namespace pimoroni;
 
@@ -121,6 +124,23 @@ typedef struct NTP_T_ {
 
 #endif
 
+//GPS
+#define GPS_UART_TX 0
+#define GPS_UART_RX 1
+#ifndef PICO_DEFAULT_UART_TX_PIN
+#define PICO_DEFAULT_UART_TX_PIN 0
+#endif
+
+#define BUFFSIZE 800
+
+#define GPS_BAUD_RATE 9600
+//Baud rate
+#define SET_NMEA_BAUDRATE_115200    "$PMTK251,115200"
+#define SET_NMEA_OUTPUT             "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,0"
+#define SET_NMEA_OUTPUT_ALL_DATA    "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0"
+
+#define SET_POS_FIX_400MS   "$PMTK220,400"
+
 // ***** class based on Starmap ******
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);
@@ -160,7 +180,7 @@ uint8_t g;
 uint8_t b;
 //ds3231
 ds3231_t ds3231;
-// datetime variable to store rtc initialisation
+// tm variable to store rtc initialisation
 struct tm t_init_tm;
 
 // NTP
@@ -168,6 +188,22 @@ struct tm t_init_tm;
 NTP_T *state;
 int received_response_ntp;
 #endif
+
+// GPS handling
+/* GPS handle */
+lwgps_t hgps;
+/* GPS buffer */
+lwrb_t hgps_buff;
+uint8_t hgps_buff_data[12];
+
+char buff_t [BUFFSIZE];
+char const hexCheck[16]={'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+
+const char* command_NMEA_OUTPUT = SET_NMEA_OUTPUT;
+const char* command_NMEA_OUTPUT_ALL_DATA = SET_NMEA_OUTPUT_ALL_DATA;
+const char* command_BAUDRATE_115200 = SET_NMEA_BAUDRATE_115200;
+
+static size_t write_ptr;
 
 // ******** function prototypes ************
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
@@ -179,6 +215,9 @@ void disp_magnitude(double magnitude, int x, int y, int color);
 void disp_time_offset(int offset, int x, int y, int color);
 const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
+//GPS
+static void uart_irqhandler(void);
+void L76X_send_command(char *data);
 
 //NTP functions definitions
 #ifdef WITH_NTP
@@ -216,17 +255,21 @@ int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
 
 // ************* main code *****************
 int main() {
+  /* Hardware initialisation */
   stdio_init_all(); // Initialize standard IO
-  // int k = 3;
-  // while (k >= 0) {
-  //     printf("Testing in %d sec...\n", k);
-  //     k--;
-  //     sleep_ms(1000);
-  // }
+  uart_init(uart0, GPS_BAUD_RATE);
+  if (!uart_is_enabled(uart0)) {
+    printf("Failed to init uart0");
+    return 1;
+  }
+  gpio_init(0);
+  gpio_init(1);
+  gpio_set_function(0, GPIO_FUNC_UART); //TX
+  gpio_set_function(1, GPIO_FUNC_UART); //RX
+
   printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
 
   rect_s br; // rect used to paint the sky
-  //int i, j;
   double lat, lon; // storing lat and longitude
   int hr, min; // storing hour and min
   int old_min = -1; // storing old min in order to now if the date has to be updated
@@ -242,6 +285,7 @@ int main() {
   int button_a_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
   int button_b_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
   int8_t current_time_offset; // keeping the time offset when pressing the buttons
+  uint8_t rx; //to store byte by byte rx data
 
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
@@ -278,14 +322,11 @@ int main() {
   st7789.update(&graphics);
   led.set_rgb(200, 200, 200);
   printf("Screen Setup\r\n");
-  //sleep_ms(10000);
 
   graphics.set_pen(WHITE);
   graphics.set_font(&font8);
   graphics.text("Starmap", Point(70,10), 240, 3);
   st7789.update(&graphics);
-  //sleep_ms(10000);
-
 
   // initializing RTC
   printf("Initialising DS3231 ...\n");
@@ -425,7 +466,7 @@ int main() {
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
     printf("DS3231 not available, reverting to default time\n");
     graphics.set_pen(RED);
-    graphics.text("DS3231 not available, reverting to default time", Point(5,110), 240, 1);
+    graphics.text("DS3231 not available, reverting to default time", Point(5,120), 240, 1);
     st7789.update(&graphics);
 
   } else {
@@ -469,6 +510,46 @@ int main() {
   // The delay is up to 3 RTC clock cycles (which is 64us with the default clock settings)
   sleep_us(64);
 
+  /*Initialisation of GPS */
+  lwgps_init(&hgps); //Init GPS
+  lwrb_init(&hgps_buff, hgps_buff_data, sizeof(hgps_buff_data)); /* Create buffer for received data */
+
+  //Set output message
+  L76X_send_command((char*)command_NMEA_OUTPUT);
+  sleep_ms(100);
+
+  while (true) {
+    /* Add new character to buffer */
+    /* UART interrupt handler on host microcontroller */
+    uart_irqhandler();
+
+    /* Process all input data */
+    /* Read from buffer byte-by-byte and call processing function */
+    if (lwrb_get_full(&hgps_buff)) {        /* Check if anything in buffer now */
+      while (lwrb_read(&hgps_buff, &rx, 1) == 1) {
+        lwgps_process(&hgps, &rx, 1);   /* Process byte-by-byte */
+      }
+    } else {
+      /* Print all data after successful processing */
+      printf("\n--------------------------------------\nData received\n-----------------------------------\n");
+      printf("Data received :\n");
+      printf("%s\n", buff_t);
+      printf("From lwGPS : \n");
+      printf("        Valid status :%d\r\n", hgps.is_valid);
+      printf("        Latitude: %f degrees\r\n", hgps.latitude);
+      printf("        Longitude: %f degrees\r\n", hgps.longitude);
+      printf("        Altitude: %f meters\r\n", hgps.altitude);
+      //break;
+      // GPS = L76X_Gat_GNRMC();
+      // printf("From Waveshare parser :\n");
+      // printf("          Time: %d:%d:%d \r\n", GPS.Time_H, GPS.Time_M, GPS.Time_S);
+      // printf("          Latitude and longitude: %lf  %c  %lf  %c\r\n", GPS.Lat, GPS.Lat_area, GPS.Lon, GPS.Lon_area);
+      sleep_ms(10000);
+    }
+  }
+
+
+  /* Starting main loop */
   // variables needed for looping
   mode = 1 ; // mode 1 is the loop on current time, mode 0 is the manual mode
   to_update = 1; // 1 means that the sky calculation needs to be updated and screen refreshed
@@ -995,6 +1076,39 @@ static NTP_T* ntp_init(void) {
 }
 #endif
 
+//GPS related function
+static void uart_irqhandler(void) {
+    /* Make interrupt handler as fast as possible */
+    /* Only write to received buffer and process later */
+    if (write_ptr < BUFFSIZE) {
+        /* Write to buffer only */
+        buff_t[write_ptr] = uart_getc(uart0);
+        //printf("Datawritten : %c\n", buff_t[write_ptr]);
+        lwrb_write(&hgps_buff,&buff_t[write_ptr], 1);
+        ++write_ptr;
+    }
+}
+
+void L76X_send_command(char *data)
+{
+    char check1i = data[1], check_char[3]={0};
+    uint8_t i = 0;
+    //printf(" 1i = %d Check =%x \n", i, check1i);
+    for(i=2; data[i] != '\0'; i++){
+        check1i ^= data[i];       //Calculate the check value
+    }
+    //printf(" i = %d Check =%x \n", i, check1i);
+    check_char[0] = hexCheck[check1i/16%16];
+    check_char[1] = hexCheck[check1i%16];
+    check_char[2] = '\0';
+
+    uart_puts(uart0, data);
+    uart_putc(uart0,'*');
+    uart_puts(uart0, check_char);
+    uart_putc(uart0,'\r');
+    uart_putc(uart0,'\n');
+    sleep_ms(200);
+}
 
 // ************ Yale star data *****************
 

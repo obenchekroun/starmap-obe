@@ -1,4 +1,7 @@
-// Nathan Hinton
+// ********** test_gps code *************
+// rev 1 - obenchekroun - Jan 2025
+//
+
 
 #include <iostream>
 #include <stdio.h>
@@ -6,7 +9,7 @@
 #include <string>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
-#include <cstring>
+//#include <cstring>
 
 #include "lwgps/lwgps.h"
 #include "lwrb/lwrb.h"
@@ -90,7 +93,7 @@ void DEV_Uart_SendString(char *data);
 
 int main() {
     stdio_init_all();
-    stdio_usb_connected();
+    //stdio_usb_connected();
 
     sleep_ms(5000);
 
