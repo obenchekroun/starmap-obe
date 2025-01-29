@@ -25,19 +25,15 @@ pico_sdk_init()
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
 
+
 # Definitions for compiler
+add_compile_definitions(
+  LINUX_BUILD=1
+  #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
+)
 if(WITH_NTP)
-#    set(my_compile_def ${my_compile_def} WITH_NTP)
     add_compile_definitions(
-        LINUX_BUILD=1
-        #LWRB_DISABLE_ATOMIC # #define LWRB_DISABLE_ATOMIC as not implemented to pico (for lwrb)
-        #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
         WITH_NTP
-    )
-else()
-    add_compile_definitions(
-        LINUX_BUILD=1
-        #USE_DEV_LIB #define USE_DEV_LIB is needed for Waveshare driver to use lgpio library
     )
 endif()
 
@@ -106,12 +102,14 @@ set(my_lib
      pico_aon_timer #instead of hardware_rtc so the code works both for RP2040 and RP2350
      pico_ds3231
      #pico_cyw43_arch_lwip_threadsafe_background
-     lwgps
-     lwrb
 )
 
 if(WITH_NTP)
     set(my_lib ${my_lib} pico_cyw43_arch_lwip_threadsafe_background)
+endif()
+
+if(WITH_GPS)
+    set(my_lib ${my_lib} lwgps lwrb)
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${my_lib})

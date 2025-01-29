@@ -41,9 +41,11 @@ extern "C" {
 #include "button.hpp"
 
 // GPS handling libraries
+#ifdef WITH_GPS
 #include "hardware/uart.h"
 #include "lwgps/lwgps.h"
 #include "lwrb/lwrb.h"
+#endif
 
 using namespace pimoroni;
 
@@ -83,6 +85,20 @@ using namespace pimoroni;
 #define BLUE_COLOR               0x001f
 #define MILD_GREEN_COLOR         0x2689
 #define NESW_COLOR               0xf800
+
+#ifdef WITH_GPS
+//shades of colors for the lon and lat showing, depending on gps fix
+#define LON_LAT_COLOR_0          0x2fe0
+#define LON_LAT_COLOR_1          0x67e0
+#define LON_LAT_COLOR_2          0xb7e0
+#define LON_LAT_COLOR_3          0xefe0
+#define LON_LAT_COLOR_4          0xffe0
+#define LON_LAT_COLOR_5          0xfe00
+#define LON_LAT_COLOR_6          0xfc80
+#define LON_LAT_COLOR_7          0xfb00
+#define LON_LAT_COLOR_8          0xf980
+#define LON_LAT_COLOR_OTHER      0xf800
+#endif
 //Positions of text
 #define X_POS_TIME        160
 #define Y_POS_TIME        280
@@ -144,6 +160,13 @@ typedef struct NTP_T_ {
 #define SET_POS_FIX_400MS   "$PMTK220,400"
 #endif
 
+// flash memory
+// // Flash memory Chip Select (manually controlled CS)
+// #define FLASH_CS 6
+// // Flash memory command to read data
+// #define FLASH_READ 0x03
+// #define DATA_BUF_SIZE 256
+
 // ***** class based on Starmap ******
 class SM : public Starmap {
     void plot_pixel(uint16_t color, int x, int y);
@@ -164,6 +187,8 @@ size_t nbytes; // to store number of bytes for snprintf
 // update period delay
 double starmap_update_period = DEFAULT_UPDATE_DELAY * 60;  // multiply by 60 to convert minutes to seconds
 double mag; // magnitude shown
+// for the logging
+int y_pos_log;
 // for the display
 ST7789 st7789(320, 240, ROTATE_90, false, get_spi_pins(BG_SPI_FRONT));
 PicoGraphics_PenRGB565 graphics(st7789.width, st7789.height, nullptr);
@@ -193,7 +218,6 @@ int received_response_ntp;
 #endif
 
 #ifdef WITH_GPS
-// GPS handling
 /* GPS handle */
 lwgps_t hgps;
 /* GPS buffer */
@@ -211,7 +235,15 @@ static size_t write_ptr;
 
 int gps_working;
 int fix_obtained;
+int minutes_since_fix;
+
+const uint16_t col_lat_lon[9] = {LON_LAT_COLOR_0, LON_LAT_COLOR_1, LON_LAT_COLOR_2, LON_LAT_COLOR_3, LON_LAT_COLOR_4,
+LON_LAT_COLOR_5, LON_LAT_COLOR_6, LON_LAT_COLOR_7, LON_LAT_COLOR_8};
 #endif
+
+// using flash memory
+// char flash_present = 0;                      // set to 1 if the flash is present and valid
+// char flash_data[DATA_BUF_SIZE];              // buffer used for storing data read from Flash
 
 // ******** function prototypes ************
 void disp_lat_lon(double lat, double lon, int x, int y, int color);
@@ -223,11 +255,15 @@ void disp_magnitude(double magnitude, int x, int y, int color);
 void disp_time_offset(int offset, int x, int y, int color);
 const char *wd(int year, int month, int day);
 void ds3231_interrupt_callback(uint gpio, uint32_t event_mask);
+// flash memory
+// void ccw_azimuth_elevation_to_xy(double az, double el, int *x, int *y);
+// void flash_read(uint32_t addr, char *data, uint16_t len);
 //GPS
 #ifdef WITH_GPS
 static void uart_irqhandler(void);
 void L76X_send_command(char *data);
 int get_fix(void);
+int calc_color_lan_lon(int fix_obtained, int min_since_last_fix);
 #endif
 //NTP functions definitions
 #ifdef WITH_NTP
@@ -255,30 +291,58 @@ void SM::plot_pixel(uint16_t color, int x, int y) {
     graphics.pixel(Point(x, y));
 }
 
+// // ******* storage_read function *******
 int SM::storage_read(uint32_t addr, char* data, uint16_t len) {
     // printf("storage_read 0x%06x\n", addr);
     addr = addr - 0x08c00;
     memcpy(data, &yale_array[addr], len);
     return(1);
 }
+// Storage read for an external flash chip
+// int SM::storage_read(uint32_t addr, char *data, uint16_t len) {
+//   // read from Flash memory
+//   flash_read(addr, data, len);
+//   return 0;
+// }
+
+// void flash_read(uint32_t addr, char *data, uint16_t len) {
+//   uint16_t i;
+//   pinMode(DEFAULT_CS, INPUT_PULLUP);
+//   SPISettings spi_setting(1000000, MSBFIRST, SPI_MODE0);
+//   SPI.beginTransaction(spi_setting);
+//   digitalWrite(FLASH_CS, LOW);  // select the Flash chip
+//   SPI.transfer(FLASH_READ);
+//   SPI.transfer((addr >> 16) & 0xFF);
+//   SPI.transfer((addr >> 8) & 0xFF);
+//   SPI.transfer(addr & 0xFF);
+//   for (i = 0; i < len; i++) {
+//     data[i] = SPI.transfer(0);
+//   }
+//   digitalWrite(FLASH_CS, HIGH);  // deselect the Flash chip
+//   SPI.endTransaction();
+
+//   pinMode(DEFAULT_CS, OUTPUT);
+// }
 
 
 // ************* main code *****************
 int main() {
+  printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
   /* Hardware initialisation */
   stdio_init_all(); // Initialize standard IO
 #ifdef WITH_GPS
+  gps_working = 0;
   uart_init(uart0, GPS_BAUD_RATE);
   if (!uart_is_enabled(uart0)) {
-    printf("Failed to init uart0");
-    return 1;
+    printf("Failed to init uart0\n");
+  } else {
+    gpio_init(0);
+    gpio_init(1);
+    gpio_set_function(0, GPIO_FUNC_UART); //TX
+    gpio_set_function(1, GPIO_FUNC_UART); //RX
+    gps_working = 1;
   }
-  gpio_init(0);
-  gpio_init(1);
-  gpio_set_function(0, GPIO_FUNC_UART); //TX
-  gpio_set_function(1, GPIO_FUNC_UART); //RX
 #endif
-  printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
 
   rect_s br; // rect used to paint the sky
   double lat, lon; // storing lat and longitude
@@ -335,13 +399,15 @@ int main() {
 
   graphics.set_pen(WHITE);
   graphics.set_font(&font8);
-  graphics.text("Starmap", Point(70,10), 240, 3);
+  y_pos_log = 10;
+  graphics.text("Starmap", Point(70,y_pos_log), 240, 3);
   st7789.update(&graphics);
 
   // initializing RTC
   printf("Initialising DS3231 ...\n");
   graphics.set_pen(WHITE);
-  graphics.text("Initialising DS3231 ...", Point(5,40), 240, 1);
+  y_pos_log = 40;
+  graphics.text("Initialising DS3231 ...", Point(5,y_pos_log), 240, 1);
   st7789.update(&graphics);
   char datetime_buf[256];
   /* Define structure to get time */
@@ -381,38 +447,44 @@ int main() {
 
   printf("DS3231 initialized !\n");
   graphics.set_pen(GREEN);
-  graphics.text("DS3231 initialized !", Point(5,50), 240, 1);
+  y_pos_log += 10;
+  graphics.text("DS3231 initialized !", Point(5,y_pos_log), 240, 1);
   st7789.update(&graphics);
 
 #ifdef WITH_NTP
   // NTP attempt
   graphics.set_pen(WHITE);
   printf("Trying to get updated time with NTP\n");
-  graphics.text("Trying to get updated time with NTP", Point(5,60), 240, 1);
+  y_pos_log += 10;
+  graphics.text("Trying to get updated time with NTP", Point(5,y_pos_log), 240, 1);
   st7789.update(&graphics);
 
   if (cyw43_arch_init()) {
     printf("failed to initialise cyw43 arch, skipping updating the time with NTP\n");
     graphics.set_pen(RED);
-    graphics.text("Failed to initialise cyw43 arch, skipping NTP", Point(5,70), 240, 1);
+    y_pos_log += 10;
+    graphics.text("Failed to initialise cyw43 arch, skipping NTP", Point(5,y_pos_log), 240, 1);
     st7789.update(&graphics);
   } else {
     cyw43_arch_enable_sta_mode();
     printf("Trying to connect to wifi\n");
     graphics.set_pen(WHITE);
-    graphics.text("Trying to connect to wifi", Point(5,70), 240, 1);
+    y_pos_log += 10;
+    graphics.text("Trying to connect to wifi", Point(5,y_pos_log), 240, 1);
     st7789.update(&graphics);
 
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
       cyw43_arch_deinit();
       printf("Failed to connect to wifi, skipping updating the time with NTP\n");
       graphics.set_pen(RED);
-      graphics.text("Failed to connect to wifi, skipping NTP", Point(5,80), 240, 1);
+      y_pos_log +=10;
+      graphics.text("Failed to connect to wifi, skipping NTP", Point(5,y_pos_log), 240, 1);
       st7789.update(&graphics);
     } else {
       printf("Connected to wifi, setting up NTP...\n");
       graphics.set_pen(GREEN);
-      graphics.text("Connected to wifi, setting up NTP ...", Point(5,80), 240, 1);
+      y_pos_log +=10;
+      graphics.text("Connected to wifi, setting up NTP ...", Point(5,y_pos_log), 240, 1);
       st7789.update(&graphics);
 
       int nb_attempt = 5;
@@ -421,11 +493,13 @@ int main() {
       if (!state) {
         printf("Failed to connect to NTP server, no updating RTC\n");
         graphics.set_pen(RED);
-        graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,90), 240, 1);
+        y_pos_log +=10;
+        graphics.text("Failed to connect to NTP server, no updating RTC", Point(5,y_pos_log), 240, 1);
         st7789.update(&graphics);
       } else {
         graphics.set_pen(WHITE);
-        graphics.text("Attempt to get NTP response...", Point(5,90), 240, 1);
+        y_pos_log +=10;
+        graphics.text("Attempt to get NTP response...", Point(5,y_pos_log), 240, 1);
         st7789.update(&graphics);
         while(nb_attempt > 0 && !received_response_ntp) {
           printf("Attempt to get NTP response n°%i\n", nb_attempt);
@@ -476,7 +550,8 @@ int main() {
   if(ds3231_read_current_time(&ds3231, &ds3231_data)) {
     printf("DS3231 not available, reverting to default time\n");
     graphics.set_pen(RED);
-    graphics.text("DS3231 not available, reverting to default time", Point(5,120), 240, 1);
+    y_pos_log +=10;
+    graphics.text("DS3231 not available, reverting to default time", Point(5,y_pos_log), 240, 1);
     st7789.update(&graphics);
 
   } else {
@@ -487,7 +562,8 @@ int main() {
            ds3231_data.hours, ds3231_data.minutes, ds3231_data.seconds,
            days[dotw], ds3231_data.date, ds3231_data.month, ds3231_data.year);
     graphics.set_pen(GREEN);
-    graphics.text("Time obtained from DS3231!", Point(5,120), 240, 1);
+    y_pos_log +=10;
+    graphics.text("Time obtained from DS3231!", Point(5,y_pos_log), 240, 1);
     st7789.update(&graphics);
 
 #ifdef WITH_NTP
@@ -504,7 +580,8 @@ int main() {
       t_init_tm.tm_sec = (int8_t)ds3231_data.seconds;
 
       graphics.set_pen(GREEN);
-      graphics.text("DS3231 time set to RTC !", Point(5,130), 240, 1);
+      y_pos_log +=10;
+      graphics.text("DS3231 time set to RTC !", Point(5,y_pos_log), 240, 1);
 #ifdef WITH_NTP
     }
 #endif
@@ -521,50 +598,32 @@ int main() {
   sleep_us(64);
 
 #ifdef WITH_GPS
-  /*Initialisation of GPS */
-  lwgps_init(&hgps); //Init GPS
-  lwrb_init(&hgps_buff, hgps_buff_data, sizeof(hgps_buff_data)); /* Create buffer for received data */
+  if (gps_working) {
+    /*Initialisation of GPS */
+    lwgps_init(&hgps); //Init GPS
+    lwrb_init(&hgps_buff, hgps_buff_data, sizeof(hgps_buff_data)); /* Create buffer for received data */
 
-  //Set output message
-  L76X_send_command((char*)command_NMEA_OUTPUT);
-  sleep_ms(100);
-  if(get_fix()) {
-    // starmap.lon
+    //Set output message
+    L76X_send_command((char*)command_NMEA_OUTPUT);
+    sleep_ms(100);
+    fix_obtained = 0;
+    minutes_since_fix = 0;
+    if(get_fix()) {
+      fix_obtained = 1;
+      //minutes_since_fix = 0;
+      starmap.siteLat = hgps.latitude;
+      starmap.siteLon = hgps.longitude;
+    }
+    graphics.set_pen(GREEN);
+    y_pos_log +=10;
+    graphics.text("GPS set up. Current position will be used !\n", Point(5,y_pos_log), 240, 1);
+    st7789.update(&graphics);
+  } else {
+    graphics.set_pen(RED);
+    y_pos_log +=10;
+    graphics.text("Failed to init GPS uart0. Casablanca, Morocco position set !\n", Point(5,y_pos_log), 240, 1);
+    st7789.update(&graphics);
   }
-#endif
-
-#ifdef WITH_GPS
-  // while (true) {
-  //   /* Add new character to buffer */
-  //   /* UART interrupt handler on host microcontroller */
-  //   uart_irqhandler();
-
-  //   /* Process all input data */
-  //   /* Read from buffer byte-by-byte and call processing function */
-  //   if (lwrb_get_full(&hgps_buff)) {        /* Check if anything in buffer now */
-  //     while (lwrb_read(&hgps_buff, &rx, 1) == 1) {
-  //       lwgps_process(&hgps, &rx, 1);   /* Process byte-by-byte */
-  //     }
-  //   } else {
-  //     /* Print all data after successful processing */
-  //     printf("\n--------------------------------------\nData received\n-----------------------------------\n");
-  //     printf("Data received :\n");
-  //     printf("%s\n", buff_t);
-  //     printf("From lwGPS : \n");
-  //     printf("        Valid status :%d\r\n", hgps.is_valid);
-  //     printf("        Latitude: %f degrees\r\n", hgps.latitude);
-  //     printf("        Longitude: %f degrees\r\n", hgps.longitude);
-  //     printf("        Altitude: %f meters\r\n", hgps.altitude);
-  //     //break;
-  //     // GPS = L76X_Gat_GNRMC();
-  //     // printf("From Waveshare parser :\n");
-  //     // printf("          Time: %d:%d:%d \r\n", GPS.Time_H, GPS.Time_M, GPS.Time_S);
-  //     // printf("          Latitude and longitude: %lf  %c  %lf  %c\r\n", GPS.Lat, GPS.Lat_area, GPS.Lon, GPS.Lon_area);
-  //     sleep_ms(10000);
-  //   }
-  // }
-  sleep_ms(10000);
-  get_fix();
 #endif
 
   /* Starting main loop */
@@ -576,7 +635,8 @@ int main() {
   current_time_offset = 0;
 
   graphics.set_pen(WHITE);
-  graphics.text("Beginning loop! in 2 sec...", Point(5,140), 240, 1);
+  y_pos_log +=10;
+  graphics.text("Beginning loop! in 2 sec...", Point(5,y_pos_log), 240, 1);
   st7789.update(&graphics);
   sleep_ms(2000);
 
@@ -641,7 +701,7 @@ int main() {
       hr = tm.tm_hour;
       min = tm.tm_min;
 
-      printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon);
+      printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f --- Magnitude = %.0lf\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon, mag);
 
       mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
       mytime.tm_min=tm.tm_min;  // minutes 0-59
@@ -654,8 +714,20 @@ int main() {
       nbytes = snprintf(NULL, 0, "time=%f.\n", starmap.jdtime) + 1;
       snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
 
-      starmap.siteLat = 33.589886; // casablanca, Morocco
-      starmap.siteLon = -7.603869; // Casablanca, Morocco
+#ifdef WITH_GPS
+      if (mode && gps_working) {
+        if (get_fix()) {
+          starmap.siteLat = hgps.latitude;
+          starmap.siteLon = hgps.longitude;
+          minutes_since_fix = 0;
+          fix_obtained = 1;
+        } else {
+          minutes_since_fix += 1;
+        }
+      }
+#endif
+      //starmap.siteLat = 33.589886; // casablanca, Morocco
+      //starmap.siteLon = -7.603869; // Casablanca, Morocco
 
       // Setting up the rectangle for Starmap class
       br.left=0;
@@ -682,7 +754,11 @@ int main() {
       // Draw lat and long on screen
       lat = starmap.siteLat;
       lon = starmap.siteLon;
+#ifdef WITH_GPS
+      disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, calc_color_lan_lon(fix_obtained,minutes_since_fix));
+#else
       disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
+#endif
       // Draw time on screen
       disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
       // Draw date
@@ -718,12 +794,20 @@ int main() {
       }
 
       if (min != old_min) {
+#ifdef WITH_GPS
+        minutes_since_fix += 1; //increment counter since fix
+        printf("Fix status : %d, Min since last fix : %d\n", fix_obtained, minutes_since_fix);
+#endif
         old_min = min;
         printf("updating the time\n");
         // Draw lat and long on screen
         lat = starmap.siteLat;
         lon = starmap.siteLon;
+#ifdef WITH_GPS
+        disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, calc_color_lan_lon(fix_obtained,minutes_since_fix));
+#else
         disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
+#endif
         // Draw time
         disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
         // Draw date
@@ -993,15 +1077,16 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         ds3231_configure_time(&ds3231, &ds3231_data_ntp);
         printf("NTP time saved to DS3231!\n");
         graphics.set_pen(GREEN);
-        graphics.text("NTP time saved to DS3231!", Point(5,100), 240, 1);
+        y_pos_log +=10;
+        graphics.text("NTP time saved to DS3231!", Point(5,y_pos_log), 240, 1);
         st7789.update(&graphics);
 
         // putting time from ntp in t_init to initialize pico RTC
-        //convert_tm_to_datetime(utc, &t_init);
         t_init_tm = *utc;
         printf("NTP time converted to initialize RTC !\n");
         graphics.set_pen(GREEN);
-        graphics.text("NTP time converted to initialize RTC!", Point(5,110), 240, 1);
+        y_pos_log +=10;
+        graphics.text("NTP time converted to initialize RTC!", Point(5,y_pos_log), 240, 1);
         st7789.update(&graphics);
 
     }
@@ -1155,6 +1240,18 @@ int get_fix(void) {
   }
   return hgps.is_valid;
 }
+
+int calc_color_lan_lon(int is_fix_obtained, int min_since_last_fix) {
+  if(!is_fix_obtained) return RED_COLOR;
+  if(!min_since_last_fix) return GREEN_COLOR;
+  // exploiting integer division: mapping the cases to deal with to 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+  // which gives around 30 minutes of color variations
+  if(((min_since_last_fix - 1) / 3) > 8) return LON_LAT_COLOR_OTHER;
+
+  return col_lat_lon[((min_since_last_fix - 1) / 3)];
+
+}
+
 #endif
 // ************ Yale star data *****************
 
