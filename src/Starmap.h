@@ -61,10 +61,10 @@
 #define DEFAULT_COL3_MARS       0xb947//0x4147
 #define DEFAULT_COL4_MARS       0x6a2c
 
-#define DEFAULT_COL1_JUPITER    0xf693//0xe73c
-#define DEFAULT_COL2_JUPITER    0xee13
+#define DEFAULT_COL1_JUPITER    0xff59//0xf693//0xe73c
+#define DEFAULT_COL2_JUPITER    0xed73//0xee13
 #define DEFAULT_COL3_JUPITER    0xd40e
-#define DEFAULT_COL4_JUPITER    0xbc4e//0x8aa7
+#define DEFAULT_COL4_JUPITER    0xbbee//0xbc4e//0x8aa7
 
 #define DEFAULT_COL1_SATURN     0xee13
 #define DEFAULT_COL2_SATURN     0xd50c
