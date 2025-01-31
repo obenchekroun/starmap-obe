@@ -145,61 +145,76 @@ Starmap::Starmap()
   col4_pluto = DEFAULT_COL4_PLUTO;
 
   //initializing array of pointers for moon color palettes (4 colors)
-  colors_pointers_moon[0] = &col1_moon;
-  colors_pointers_moon[1] = &col2_moon;
-  colors_pointers_moon[2] = &col3_moon;
-  colors_pointers_moon[3] = &col4_moon;
+  int* moon_colors[4] = {&col1_moon, &col2_moon, &col3_moon, &col4_moon};
+  initialise_colors_moon(moon_colors);
+  // colors_pointers_moon[0] = &col1_moon;
+  // colors_pointers_moon[1] = &col2_moon;
+  // colors_pointers_moon[2] = &col3_moon;
+  // colors_pointers_moon[3] = &col4_moon;
 
   //initializing array of pointers for planets + sun color palettes (4 colors)
-  colors_pointers_planets[0][0] = &col1_sun;
-  colors_pointers_planets[0][1] = &col2_sun;
-  colors_pointers_planets[0][2] = &col3_sun;
-  colors_pointers_planets[0][3] = &col4_sun;
+  int* planet_colors[10][4] = {
+    {&col1_sun, &col2_sun, &col3_sun, &col4_sun},
+    {&col1_mercury, &col2_mercury, &col3_mercury, &col4_mercury},
+    {&col1_venus, &col2_venus, &col3_venus, &col4_venus},
+    {&col1_earth, &col2_earth, &col3_earth, &col4_earth},
+    {&col1_mars, &col2_mars, &col3_mars, &col4_mars},
+    {&col1_jupiter, &col2_jupiter, &col3_jupiter, &col4_jupiter},
+    {&col1_saturn, &col2_saturn, &col3_saturn, &col4_saturn},
+    {&col1_uranus, &col2_uranus, &col3_uranus, &col4_uranus},
+    {&col1_neptune, &col2_neptune, &col3_neptune, &col4_neptune},
+    {&col1_pluto, &col2_pluto, &col3_pluto, &col4_pluto}
+};
+  initialise_colors_planets(planet_colors);
+  // colors_pointers_planets[0][0] = &col1_sun;
+  // colors_pointers_planets[0][1] = &col2_sun;
+  // colors_pointers_planets[0][2] = &col3_sun;
+  // colors_pointers_planets[0][3] = &col4_sun;
 
-  colors_pointers_planets[1][0] = &col1_mercury;
-  colors_pointers_planets[1][1] = &col2_mercury;
-  colors_pointers_planets[1][2] = &col3_mercury;
-  colors_pointers_planets[1][3] = &col4_mercury;
+  // colors_pointers_planets[1][0] = &col1_mercury;
+  // colors_pointers_planets[1][1] = &col2_mercury;
+  // colors_pointers_planets[1][2] = &col3_mercury;
+  // colors_pointers_planets[1][3] = &col4_mercury;
 
-  colors_pointers_planets[2][0] = &col1_venus;
-  colors_pointers_planets[2][1] = &col2_venus;
-  colors_pointers_planets[2][2] = &col3_venus;
-  colors_pointers_planets[2][3] = &col4_venus;
+  // colors_pointers_planets[2][0] = &col1_venus;
+  // colors_pointers_planets[2][1] = &col2_venus;
+  // colors_pointers_planets[2][2] = &col3_venus;
+  // colors_pointers_planets[2][3] = &col4_venus;
 
-  colors_pointers_planets[3][0] = &col1_earth;
-  colors_pointers_planets[3][1] = &col2_earth;
-  colors_pointers_planets[3][2] = &col3_earth;
-  colors_pointers_planets[3][3] = &col4_earth;
+  // colors_pointers_planets[3][0] = &col1_earth;
+  // colors_pointers_planets[3][1] = &col2_earth;
+  // colors_pointers_planets[3][2] = &col3_earth;
+  // colors_pointers_planets[3][3] = &col4_earth;
 
-  colors_pointers_planets[4][0] = &col1_mars;
-  colors_pointers_planets[4][1] = &col2_mars;
-  colors_pointers_planets[4][2] = &col3_mars;
-  colors_pointers_planets[4][3] = &col4_mars;
+  // colors_pointers_planets[4][0] = &col1_mars;
+  // colors_pointers_planets[4][1] = &col2_mars;
+  // colors_pointers_planets[4][2] = &col3_mars;
+  // colors_pointers_planets[4][3] = &col4_mars;
 
-  colors_pointers_planets[5][0] = &col1_jupiter;
-  colors_pointers_planets[5][1] = &col2_jupiter;
-  colors_pointers_planets[5][2] = &col3_jupiter;
-  colors_pointers_planets[5][3] = &col4_jupiter;
+  // colors_pointers_planets[5][0] = &col1_jupiter;
+  // colors_pointers_planets[5][1] = &col2_jupiter;
+  // colors_pointers_planets[5][2] = &col3_jupiter;
+  // colors_pointers_planets[5][3] = &col4_jupiter;
 
-  colors_pointers_planets[6][0] = &col1_saturn;
-  colors_pointers_planets[6][1] = &col2_saturn;
-  colors_pointers_planets[6][2] = &col3_saturn;
-  colors_pointers_planets[6][3] = &col4_saturn;
+  // colors_pointers_planets[6][0] = &col1_saturn;
+  // colors_pointers_planets[6][1] = &col2_saturn;
+  // colors_pointers_planets[6][2] = &col3_saturn;
+  // colors_pointers_planets[6][3] = &col4_saturn;
 
-  colors_pointers_planets[7][0] = &col1_uranus;
-  colors_pointers_planets[7][1] = &col2_uranus;
-  colors_pointers_planets[7][2] = &col3_uranus;
-  colors_pointers_planets[7][3] = &col4_uranus;
+  // colors_pointers_planets[7][0] = &col1_uranus;
+  // colors_pointers_planets[7][1] = &col2_uranus;
+  // colors_pointers_planets[7][2] = &col3_uranus;
+  // colors_pointers_planets[7][3] = &col4_uranus;
 
-  colors_pointers_planets[8][0] = &col1_neptune;
-  colors_pointers_planets[8][1] = &col2_neptune;
-  colors_pointers_planets[8][2] = &col3_neptune;
-  colors_pointers_planets[8][3] = &col4_neptune;
+  // colors_pointers_planets[8][0] = &col1_neptune;
+  // colors_pointers_planets[8][1] = &col2_neptune;
+  // colors_pointers_planets[8][2] = &col3_neptune;
+  // colors_pointers_planets[8][3] = &col4_neptune;
 
-  colors_pointers_planets[9][0] = &col1_pluto;
-  colors_pointers_planets[9][1] = &col2_pluto;
-  colors_pointers_planets[9][2] = &col3_pluto;
-  colors_pointers_planets[9][3] = &col4_pluto;
+  // colors_pointers_planets[9][0] = &col1_pluto;
+  // colors_pointers_planets[9][1] = &col2_pluto;
+  // colors_pointers_planets[9][2] = &col3_pluto;
+  // colors_pointers_planets[9][3] = &col4_pluto;
 }
 
 double Starmap::jtime(tm_t *t)
@@ -3342,6 +3357,22 @@ void Starmap::DrawStar(int x, int y, int level)
 int Starmap::storage_read(uint32_t addr, char* data, uint16_t len)
 {
 	return(-1);
+}
+
+void Starmap::initialise_colors_planets(int* planet_colors[10][4]) {
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 4; j++) {
+            colors_pointers_planets[i][j] = planet_colors[i][j];
+        }
+    }
+}
+
+void Starmap::initialise_colors_moon(int* moon_colors[4]) {
+
+    for (int j = 0; j < 4; j++) {
+        colors_pointers_moon[j] = moon_colors[j];
+    }
+
 }
 
 

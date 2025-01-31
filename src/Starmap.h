@@ -429,6 +429,8 @@ class Starmap
     void do_neptune(double T0, struct planet *planet_info);
     int pluto(double jd, double *l, double *b, double *r);
     void calcPlanet(double jd);
+    void initialise_colors_planets(int* planet_colors[10][4]);
+    void initialise_colors_moon(int* moon_colors[4]);
 
   
     char mDummy;
