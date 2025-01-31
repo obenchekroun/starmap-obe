@@ -21,6 +21,12 @@ extern const char moondim[7];
 extern const char moondark[7];
 extern const char moonphtext[8][7];
 
+// containing information to draw 7 phases of moon  with 4 colors as 8x8 icons
+//1st index is moon phase
+//2nd index is color
+//3rd index is the 8 lines containing 8 pixels each
+extern const char moon_drawing[8][4][8];
+
 // containing information to draw planet with 4 colors as 8x8 icons
 // 1st index is planet with order :
 //0 - Sun

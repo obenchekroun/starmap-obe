@@ -40,6 +40,11 @@
 #define DEFAULT_COL2_SUN        0xfbc4
 #define DEFAULT_COL3_SUN        0xc384
 #define DEFAULT_COL4_SUN        0xca83
+/* moon color */
+#define DEFAULT_COL1_MOON       0xffff
+#define DEFAULT_COL2_MOON       0xdefd
+#define DEFAULT_COL3_MOON       0x9518
+#define DEFAULT_COL4_MOON       0x3a0d
 /* planets colors */
 #define DEFAULT_COL1_MERCURY    0x5aaa
 #define DEFAULT_COL2_MERCURY    0x83f0
@@ -314,10 +319,10 @@ class Starmap
     int col_starbright;
     int col_startext;
     //colors for the moon
-    int col_moon_bright;
-    int col_moon_dim;
-    int col_moon_dark;
-    int col_moon_phtext;
+    // int col_moon_bright;
+    // int col_moon_dim;
+    // int col_moon_dark;
+    // int col_moon_phtext;
 
     int col_constel_text;
     int col_bright_st_text;
@@ -330,6 +335,12 @@ class Starmap
     int col2_sun;
     int col3_sun;
     int col4_sun;
+
+    //colors for the moo,n
+    int col1_moon;
+    int col2_moon;
+    int col3_moon;
+    int col4_moon;
 
     // colors for the planets
     int col1_mercury;
@@ -496,7 +507,10 @@ class Starmap
     //7 - Uranus
     //8 - Neptune
     //9 - Pluto
-    int* colors_pointers[10][4];
+    int* colors_pointers_planets[10][4];
+
+    //arrays of pointers to moon colors
+    int* colors_pointers_moon[4];
 
 
 };

@@ -54,6 +54,7 @@ using namespace pimoroni;
 #define FOREVER 1
 #define DELAY_MS delay
 #define IMAGE_ALPHA_CHANNEL 255
+#define MAX_VALUE_CURRENT_TIME_OFFSET 8640
 // TFT dimensions
 #define TFT_W 240
 #define TFT_H 320
@@ -68,10 +69,6 @@ using namespace pimoroni;
 #define SM_COL_STARDIM           0xa520
 #define SM_COL_STARBRIGHT        0xffe0
 #define SM_COL_STARTEXT          0x033f //0x001f
-#define SM_COL_MOON_BRIGHT       0xffff
-#define SM_COL_MOON_DIM          0xe71c
-#define SM_COL_MOON_DARK         0xce79
-#define SM_COL_MOON_PHTEXT       0x0000
 #define SM_COL_TEXT_GENERIC      0xc618
 #define SM_COL_STARBRIGHT_TEXT   0x05df //0x001f
 #define SM_COL_ECLIPTIC_TEXT     0xab91
@@ -85,6 +82,7 @@ using namespace pimoroni;
 #define BLUE_COLOR               0x001f
 #define MILD_GREEN_COLOR         0x2689
 #define NESW_COLOR               0xf800
+#define GREY_COLOR               0x9cd3
 
 #ifdef WITH_GPS
 //shades of colors for the lon and lat showing, depending on gps fix
@@ -359,7 +357,7 @@ int main() {
   int to_update; // when update of skymap is needed
   int button_a_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
   int button_b_pressed; // to track press of button. For convenience, the update of screen is only done when the button is released, otherwise, increment of time offfset are stacked
-  int8_t current_time_offset; // keeping the time offset when pressing the buttons
+  int16_t current_time_offset; // keeping the time offset when pressing the buttons
 
   nbytes = snprintf(NULL, 0, "%s", "Hello\n") + 1;
   snprintf(starmap.log2ram_buf, nbytes,"Hello\n");
@@ -375,10 +373,6 @@ int main() {
   starmap.col_stardim = SM_COL_STARDIM;
   starmap.col_starbright = SM_COL_STARBRIGHT;
   starmap.col_startext = SM_COL_STARTEXT;
-  starmap.col_moon_bright = SM_COL_MOON_BRIGHT;
-  starmap.col_moon_dim = SM_COL_MOON_DIM;
-  starmap.col_moon_dark = SM_COL_MOON_DARK;
-  starmap.col_moon_phtext = SM_COL_MOON_PHTEXT;
   starmap.col_constel_text = SM_COL_CONSTEL_TEXT;
   starmap.col_bright_st_text = SM_COL_STARBRIGHT_TEXT;
   starmap.col_ecliptic_text = SM_COL_ECLIPTIC_TEXT;
@@ -661,7 +655,7 @@ int main() {
     // Button A and B allows to -1 or +1 resp .the current hour
     // to avoid lagging, we wait for the release of the button in order to update the sky
     // we paint the current offset on the screen
-    while (button_a.raw() && !mode && abs(current_time_offset) < 127) {
+    while (button_a.raw() && !mode && abs(current_time_offset) < MAX_VALUE_CURRENT_TIME_OFFSET) {
       tm.tm_hour = tm.tm_hour-1;
       current_time_offset = current_time_offset - 1;
       disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, RED_COLOR);
@@ -676,7 +670,7 @@ int main() {
       to_update = 1;
     }
 
-    while (button_b.raw() && !mode && abs(current_time_offset) < 127) {
+    while (button_b.raw() && !mode && abs(current_time_offset) < MAX_VALUE_CURRENT_TIME_OFFSET) {
       tm.tm_hour = tm.tm_hour+1;
       current_time_offset = current_time_offset + 1;
       disp_time_offset(current_time_offset, X_POS_TIME_OFFSET, Y_POS_TIME_OFFSET, GREEN_COLOR);
@@ -1242,7 +1236,7 @@ int get_fix(void) {
 }
 
 int calc_color_lan_lon(int is_fix_obtained, int min_since_last_fix) {
-  if(!is_fix_obtained) return RED_COLOR;
+  if(!is_fix_obtained) return GREY_COLOR;
   if(!min_since_last_fix) return GREEN_COLOR;
   // exploiting integer division: mapping the cases to deal with to 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
   // which gives around 30 minutes of color variations

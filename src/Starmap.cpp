@@ -72,11 +72,11 @@ Starmap::Starmap()
   col_starbright = DEFAULT_COL_STARBRIGHT;
   col_startext = DEFAULT_COL_STARTEXT;
 
-  //default moon color
-  col_moon_bright = DEFAULT_COL_MOON_BRIGHT;
-  col_moon_dim = DEFAULT_COL_MOON_DIM;
-  col_moon_dark = DEFAULT_COL_MOON_DARK;
-  col_moon_phtext = DEFAULT_COL_MOON_PHTEXT;
+  // //default moon color
+  // col_moon_bright = DEFAULT_COL_MOON_BRIGHT;
+  // col_moon_dim = DEFAULT_COL_MOON_DIM;
+  // col_moon_dark = DEFAULT_COL_MOON_DARK;
+  // col_moon_phtext = DEFAULT_COL_MOON_PHTEXT;
 
   do_constellation_text = 1;
 
@@ -91,6 +91,12 @@ Starmap::Starmap()
   col2_sun = DEFAULT_COL2_SUN;
   col3_sun = DEFAULT_COL3_SUN;
   col4_sun = DEFAULT_COL4_SUN;
+
+  // moon colors
+  col1_moon = DEFAULT_COL1_MOON;
+  col2_moon = DEFAULT_COL2_MOON;
+  col3_moon = DEFAULT_COL3_MOON;
+  col4_moon = DEFAULT_COL4_MOON;
 
   //planets colors
   col1_mercury = DEFAULT_COL1_MERCURY;
@@ -138,57 +144,62 @@ Starmap::Starmap()
   col3_pluto = DEFAULT_COL3_PLUTO;
   col4_pluto = DEFAULT_COL4_PLUTO;
 
+  //initializing array of pointers for moon color palettes (4 colors)
+  colors_pointers_moon[0] = &col1_moon;
+  colors_pointers_moon[1] = &col2_moon;
+  colors_pointers_moon[2] = &col3_moon;
+  colors_pointers_moon[3] = &col4_moon;
+
   //initializing array of pointers for planets + sun color palettes (4 colors)
+  colors_pointers_planets[0][0] = &col1_sun;
+  colors_pointers_planets[0][1] = &col2_sun;
+  colors_pointers_planets[0][2] = &col3_sun;
+  colors_pointers_planets[0][3] = &col4_sun;
 
-  colors_pointers[0][0] = &col1_sun;
-  colors_pointers[0][1] = &col2_sun;
-  colors_pointers[0][2] = &col3_sun;
-  colors_pointers[0][3] = &col4_sun;
+  colors_pointers_planets[1][0] = &col1_mercury;
+  colors_pointers_planets[1][1] = &col2_mercury;
+  colors_pointers_planets[1][2] = &col3_mercury;
+  colors_pointers_planets[1][3] = &col4_mercury;
 
-  colors_pointers[1][0] = &col1_mercury;
-  colors_pointers[1][1] = &col2_mercury;
-  colors_pointers[1][2] = &col3_mercury;
-  colors_pointers[1][3] = &col4_mercury;
+  colors_pointers_planets[2][0] = &col1_venus;
+  colors_pointers_planets[2][1] = &col2_venus;
+  colors_pointers_planets[2][2] = &col3_venus;
+  colors_pointers_planets[2][3] = &col4_venus;
 
-  colors_pointers[2][0] = &col1_venus;
-  colors_pointers[2][1] = &col2_venus;
-  colors_pointers[2][2] = &col3_venus;
-  colors_pointers[2][3] = &col4_venus;
+  colors_pointers_planets[3][0] = &col1_earth;
+  colors_pointers_planets[3][1] = &col2_earth;
+  colors_pointers_planets[3][2] = &col3_earth;
+  colors_pointers_planets[3][3] = &col4_earth;
 
-  colors_pointers[3][0] = &col1_earth;
-  colors_pointers[3][1] = &col2_earth;
-  colors_pointers[3][2] = &col3_earth;
-  colors_pointers[3][3] = &col4_earth;
+  colors_pointers_planets[4][0] = &col1_mars;
+  colors_pointers_planets[4][1] = &col2_mars;
+  colors_pointers_planets[4][2] = &col3_mars;
+  colors_pointers_planets[4][3] = &col4_mars;
 
-  colors_pointers[4][0] = &col1_mars;
-  colors_pointers[4][1] = &col2_mars;
-  colors_pointers[4][2] = &col3_mars;
-  colors_pointers[4][3] = &col4_mars;
+  colors_pointers_planets[5][0] = &col1_jupiter;
+  colors_pointers_planets[5][1] = &col2_jupiter;
+  colors_pointers_planets[5][2] = &col3_jupiter;
+  colors_pointers_planets[5][3] = &col4_jupiter;
 
-  colors_pointers[5][0] = &col1_jupiter;
-  colors_pointers[5][1] = &col2_jupiter;
-  colors_pointers[5][2] = &col3_jupiter;
-  colors_pointers[5][3] = &col4_jupiter;
+  colors_pointers_planets[6][0] = &col1_saturn;
+  colors_pointers_planets[6][1] = &col2_saturn;
+  colors_pointers_planets[6][2] = &col3_saturn;
+  colors_pointers_planets[6][3] = &col4_saturn;
 
-  colors_pointers[6][0] = &col1_saturn;
-  colors_pointers[6][1] = &col2_saturn;
-  colors_pointers[6][2] = &col3_saturn;
-  colors_pointers[6][3] = &col4_saturn;
+  colors_pointers_planets[7][0] = &col1_uranus;
+  colors_pointers_planets[7][1] = &col2_uranus;
+  colors_pointers_planets[7][2] = &col3_uranus;
+  colors_pointers_planets[7][3] = &col4_uranus;
 
-  colors_pointers[7][0] = &col1_uranus;
-  colors_pointers[7][1] = &col2_uranus;
-  colors_pointers[7][2] = &col3_uranus;
-  colors_pointers[7][3] = &col4_uranus;
+  colors_pointers_planets[8][0] = &col1_neptune;
+  colors_pointers_planets[8][1] = &col2_neptune;
+  colors_pointers_planets[8][2] = &col3_neptune;
+  colors_pointers_planets[8][3] = &col4_neptune;
 
-  colors_pointers[8][0] = &col1_neptune;
-  colors_pointers[8][1] = &col2_neptune;
-  colors_pointers[8][2] = &col3_neptune;
-  colors_pointers[8][3] = &col4_neptune;
-
-  colors_pointers[9][0] = &col1_pluto;
-  colors_pointers[9][1] = &col2_pluto;
-  colors_pointers[9][2] = &col3_pluto;
-  colors_pointers[9][3] = &col4_pluto;
+  colors_pointers_planets[9][0] = &col1_pluto;
+  colors_pointers_planets[9][1] = &col2_pluto;
+  colors_pointers_planets[9][2] = &col3_pluto;
+  colors_pointers_planets[9][3] = &col4_pluto;
 }
 
 double Starmap::jtime(tm_t *t)
@@ -3200,32 +3211,53 @@ int Starmap::OnScreen(int x, int y)
 	return(1);
 }
 
+// void Starmap::DrawMoon(int x, int y, int age)
+// {
+// 	int phase;
+// 	int i, j;
+
+// 	phase = (age + 2) % 30;
+//     phase = (phase * 8) / 30;
+
+//     for (i=0; i<7; i++) {
+//         for (j=0; j<7; j++) {
+//             if (moonphtext[phase][i] & (1 << j)) {
+//                 plot_pixel(col_moon_phtext, x+i-3, y-j+3);
+//             } else {
+//                 if (moonbright[i] & (1 << j)) {
+//                     plot_pixel(col_moon_bright, x+i-3, y-j+3);
+//                 }
+//                 if (moondim[i] & (1 << j)) {
+//                     plot_pixel(col_moon_dim, x+i-3, y-j+3);
+//                 }
+//                 if (moondark[i] & (1 << j)) {
+//                     plot_pixel(col_moon_dark, x+i-3, y-j+3);
+//                 }
+//             }
+//         }
+//     }
+// }
+
 void Starmap::DrawMoon(int x, int y, int age)
 {
 	int phase;
-	int i, j;
-	
+	int i, j, k;
+
 	phase = (age + 2) % 30;
     phase = (phase * 8) / 30;
 
-    for (i=0; i<7; i++) {
-        for (j=0; j<7; j++) {
-            if (moonphtext[phase][i] & (1 << j)) {
-                plot_pixel(col_moon_phtext, x+i-3, y-j+3);
-            } else {
-                if (moonbright[i] & (1 << j)) {
-                    plot_pixel(col_moon_bright, x+i-3, y-j+3);
-                }
-                if (moondim[i] & (1 << j)) {
-                    plot_pixel(col_moon_dim, x+i-3, y-j+3);
-                }
-                if (moondark[i] & (1 << j)) {
-                    plot_pixel(col_moon_dark, x+i-3, y-j+3);
+    for (i=0; i<8; i++) { //iteration over lines
+        for (j=0; j<8; j++) { //iteration over columns
+            for (k=0; k<4; k++) { //iteration over colors
+                if (moon_drawing[phase][k][i] & (1 << j)) {
+                    plot_pixel(*colors_pointers_moon[k], x+i-4, y-j+4);
                 }
             }
         }
     }
 }
+
+
 
 void Starmap::DrawPlanet(int x, int y, int planet_index)
 {
@@ -3234,16 +3266,16 @@ void Starmap::DrawPlanet(int x, int y, int planet_index)
     for (i=0; i<8; i++) {
         for (j=0; j<8; j++) {
                 if (planet_drawing[planet_index][0][i] & (1 << j)) {
-                    plot_pixel(*colors_pointers[planet_index][0], x+i-4, y-j+4);
+                    plot_pixel(*colors_pointers_planets[planet_index][0], x+i-4, y-j+4);
                 }
                 if (planet_drawing[planet_index][1][i] & (1 << j)) {
-                    plot_pixel(*colors_pointers[planet_index][1], x+i-4, y-j+4);
+                    plot_pixel(*colors_pointers_planets[planet_index][1], x+i-4, y-j+4);
                 }
                 if (planet_drawing[planet_index][2][i] & (1 << j)) {
-                    plot_pixel(*colors_pointers[planet_index][2], x+i-4, y-j+4);
+                    plot_pixel(*colors_pointers_planets[planet_index][2], x+i-4, y-j+4);
                 }
                 if (planet_drawing[planet_index][3][i] & (1 << j)) {
-                    plot_pixel(*colors_pointers[planet_index][3], x+i-4, y-j+4);
+                    plot_pixel(*colors_pointers_planets[planet_index][3], x+i-4, y-j+4);
                 }
             }
         }
