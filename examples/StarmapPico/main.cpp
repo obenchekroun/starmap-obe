@@ -87,14 +87,10 @@ using namespace pimoroni;
 #ifdef WITH_GPS
 //shades of colors for the lon and lat showing, depending on gps fix
 #define LON_LAT_COLOR_0          0x2fe0
-#define LON_LAT_COLOR_1          0x67e0
-#define LON_LAT_COLOR_2          0xb7e0
-#define LON_LAT_COLOR_3          0xefe0
-#define LON_LAT_COLOR_4          0xffe0
-#define LON_LAT_COLOR_5          0xfe00
-#define LON_LAT_COLOR_6          0xfc80
-#define LON_LAT_COLOR_7          0xfb00
-#define LON_LAT_COLOR_8          0xf980
+#define LON_LAT_COLOR_1          0xb7e0
+#define LON_LAT_COLOR_2          0xffe0
+#define LON_LAT_COLOR_3          0xfc80
+#define LON_LAT_COLOR_4          0xf980
 #define LON_LAT_COLOR_OTHER      0xf800
 #endif
 //Positions of text
@@ -237,8 +233,8 @@ int gps_working;
 int fix_obtained;
 int minutes_since_fix;
 
-const uint16_t col_lat_lon[9] = {LON_LAT_COLOR_0, LON_LAT_COLOR_1, LON_LAT_COLOR_2, LON_LAT_COLOR_3, LON_LAT_COLOR_4,
-LON_LAT_COLOR_5, LON_LAT_COLOR_6, LON_LAT_COLOR_7, LON_LAT_COLOR_8};
+// colors for fading coordinates
+const uint16_t col_lat_lon[5] = {LON_LAT_COLOR_0, LON_LAT_COLOR_1, LON_LAT_COLOR_2, LON_LAT_COLOR_3, LON_LAT_COLOR_4};
 #endif
 
 // using flash memory
@@ -1245,13 +1241,14 @@ int get_fix(void) {
 }
 
 int calc_color_lan_lon(int is_fix_obtained, int min_since_last_fix) {
+  //printf("Color index : %d\n", (min_since_last_fix - 1) / 2);
   if(!is_fix_obtained) return GREY_COLOR;
   if(!min_since_last_fix) return GREEN_COLOR;
   // exploiting integer division: mapping the cases to deal with to 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
   // which gives around 30 minutes of color variations
-  if(((min_since_last_fix - 1) / 3) > 8) return LON_LAT_COLOR_OTHER;
+  if(((min_since_last_fix - 1) / 2) > 4) return LON_LAT_COLOR_OTHER;
 
-  return col_lat_lon[((min_since_last_fix - 1) / 3)];
+  return col_lat_lon[((min_since_last_fix - 1) / 2)];
 
 }
 
