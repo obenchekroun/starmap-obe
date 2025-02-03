@@ -26,11 +26,13 @@
 #define PICO_DEFAULT_UART_TX_PIN 0
 #endif
 
-#define GPS_BAUD_RATE 9600
+#define GPS_BAUD_RATE 115200
+//#define GPS_BAUD_RATE 115200
 //Baud rate
 #define SET_NMEA_BAUDRATE_115200    "$PMTK251,115200"
 #define SET_NMEA_OUTPUT             "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,0"
 #define SET_NMEA_OUTPUT_ALL_DATA    "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0"
+#define SET_SYNC_PPS_NMEA_ON        "$PMTK255,1"
 
 #define SET_POS_FIX_400MS   "$PMTK220,400"
 
@@ -69,6 +71,7 @@ char const hexCheck[16]={'0','1','2','3','4','5','6','7','8','9','A','B','C','D'
 const char* command_NMEA_OUTPUT = SET_NMEA_OUTPUT;
 const char* command_NMEA_OUTPUT_ALL_DATA = SET_NMEA_OUTPUT_ALL_DATA;
 const char* command_BAUDRATE_115200 = SET_NMEA_BAUDRATE_115200;
+const char* command_SET_SYNC_PPS_NMEA_ON = SET_SYNC_PPS_NMEA_ON;
 
 
 typedef struct {
@@ -127,7 +130,8 @@ int main() {
     //L76X_Send_Command(SET_POS_FIX_400MS);
 
     //Set output message
-    L76X_send_command((char*)command_NMEA_OUTPUT);
+    L76X_send_command((char*)command_NMEA_OUTPUT_ALL_DATA);
+    L76X_send_command((char*)command_SET_SYNC_PPS_NMEA_ON);
 
     //printf("Change the L76X output baud rate to 115200 \r\n");
     //L76X_Send_Command(SET_NMEA_BAUDRATE_115200);

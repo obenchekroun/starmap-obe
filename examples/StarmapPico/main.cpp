@@ -149,11 +149,12 @@ typedef struct NTP_T_ {
 
 #define BUFFSIZE 800
 
-#define GPS_BAUD_RATE 9600
+#define GPS_BAUD_RATE 115200
 //Baud rate
 #define SET_NMEA_BAUDRATE_115200    "$PMTK251,115200"
 #define SET_NMEA_OUTPUT             "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,0"
 #define SET_NMEA_OUTPUT_ALL_DATA    "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0"
+#define SET_SYNC_PPS_NMEA_ON        "$PMTK255,1"
 
 #define SET_POS_FIX_400MS   "$PMTK220,400"
 #endif
@@ -228,6 +229,7 @@ char const hexCheck[16]={'0','1','2','3','4','5','6','7','8','9','A','B','C','D'
 const char* command_NMEA_OUTPUT = SET_NMEA_OUTPUT;
 const char* command_NMEA_OUTPUT_ALL_DATA = SET_NMEA_OUTPUT_ALL_DATA;
 const char* command_BAUDRATE_115200 = SET_NMEA_BAUDRATE_115200;
+const char* command_SET_SYNC_PPS_NMEA_ON = SET_SYNC_PPS_NMEA_ON;
 
 static size_t write_ptr;
 
@@ -598,13 +600,16 @@ int main() {
     lwrb_init(&hgps_buff, hgps_buff_data, sizeof(hgps_buff_data)); /* Create buffer for received data */
 
     //Set output message
+    //L76X_send_command((char*)command_SET_SYNC_PPS_NMEA_ON);
+    sleep_ms(100);
+    //L76X_send_command((char*)command_NMEA_OUTPUT_ALL_DATA);
     L76X_send_command((char*)command_NMEA_OUTPUT);
     sleep_ms(100);
     fix_obtained = 0;
     minutes_since_fix = 0;
     if(get_fix()) {
       fix_obtained = 1;
-      //minutes_since_fix = 0;
+      minutes_since_fix = 0;
       starmap.siteLat = hgps.latitude;
       starmap.siteLon = hgps.longitude;
     }
@@ -710,6 +715,7 @@ int main() {
 
 #ifdef WITH_GPS
       if (mode && gps_working) {
+        fix_obtained = 0;
         if (get_fix()) {
           starmap.siteLat = hgps.latitude;
           starmap.siteLon = hgps.longitude;
@@ -1209,6 +1215,7 @@ void L76X_send_command(char *data)
 }
 
 int get_fix(void) {
+  int valid_data = 0;
   uint8_t rx; //to store byte by byte rx data
   /* Add new character to buffer */
   /* UART interrupt handler on host microcontroller */
@@ -1232,7 +1239,9 @@ int get_fix(void) {
       break;
     }
   }
-  return hgps.is_valid;
+  if (hgps.latitude != 0 && hgps.longitude != 0) valid_data = 1;
+  return valid_data;
+  //return hgps.is_valid;
 }
 
 int calc_color_lan_lon(int is_fix_obtained, int min_since_last_fix) {
