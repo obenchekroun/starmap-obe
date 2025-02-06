@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.13)
 
 # Needs to be done before including SDK pico
 # https://forums.raspberrypi.com/viewtopic.php?t=376508
-set(PICO_BOARD pico_w)
-set(PICO_PLATFORM rp2040)
+set(PICO_BOARD pico2_w)
+set(PICO_PLATFORM rp2350)
 
 # Set if want to use ntp
 set(WITH_NTP 1)
