@@ -310,14 +310,21 @@ sudo make -j 8
 sudo ./main 1.28
 ```
 
-## Starmap on RP2040 wifi board + Pico Display Pack 2.0 + DS3231
+## Starmap on RP2040/RP2350 wifi board + Pico Display Pack 2.0 + DS3231 + GPS module
 
 ### Required hardware
-- RP2040 or RP2050 board
+- RP2040 or RP2350 board
 - Pimoroni Display Pack 2.0
 - DS3231 RTC module. Adafruit has a compact one [link](https://www.adafruit.com/product/3013), but any can do. *NB: PiSugar has an RTC embedded*.
+- GPS module LC76G from waveshare (but any GPS module communicating through UART is good)
 
-The build also uses wi-fi capabilities to set DS3231 time when wifi is available through NTP. By default, this is on but can be switched off by removing any definition of  `WITH_NTP`. See building for how to.
+Embedded flash memory is used to store last GPS position for quick rebooting if the GPS position is unavailable after a reboot. This is done by writing the GPS positon to flash when fix is obtained, and then loaded at startup. Some basic wear protection for is done by writing data to 16 pages (on full sector), and waiting that the all 16 are full before erasing the memory.
+
+The build uses Wi-Fi capabilities to set DS3231 time when wifi is available through NTP. By default, this is on but can be switched off by setting the  `WITH_NTP` variable to 0 in `CMakeLists.txt`.
+The use of GPS is  optional. To deactivate it, set the  `WITH_GPS` variable to `0` in `CMakeLists.txt`.
+The use of flash memory to store previous location is also optional. To deactivate it, set the  `WITH_SAVE_LOCATION` variable to `0` in `CMakeLists.txt`. *NB : this only works if GPS is used*
+
+See building for how to create the personalised firmware.
 
 ###  Dependencies
 The firmware can be built on any linux machine. You need to set up the pico-SDK :
@@ -343,6 +350,7 @@ nano ~/.profile
  #### Correcting linker Flash size definition (in case an error of Flash overflow occurs) if using other RP2040 boards
  
  **This has been resolved as of Jan 12th 2025. No need to manually change the value**
+ 
  As of May 17th 2024, linker scripts are not generated from templates at build time, and do not allow for substitution of board parameters. They are hardcoded in `pico-sdk/src/rp2_common/pico_standard_link/memmap_default.ld`. We need to change that manually for the firmware to compile. See this github issue [#398](https://github.com/raspberrypi/pico-sdk/issues/398), this one [#8680](https://github.com/micropython/micropython/issues/8680) and this [thread](https://forums.raspberrypi.com/viewtopic.php?t=311163) on Raspi Forum.
 To do so, we edit the `pico-sdk/src/rp2_common/pico_standard_link/memmap_default.ld` and change the FLASH size to 4MB (`4194304` B or `4096k`).
 
@@ -382,12 +390,33 @@ MEMORY
     - add or remove`#define WITH_NTP 1` in the beginning of `main.cpp`
     - set `set(WITH_NTP 1)` in `CMakeLists.txt`. This is the default on the current code.
     
-Then building it is done with :
+- To define the use of GPS,, you can either :
+    - add or remove`#define WITH_GPS 1` in the beginning of `main.cpp`
+    - set `set(WITH_GPS 1)` in `CMakeLists.txt`. This is the default on the current code.
+    
+- To define the save last location to flash,, you can either :
+    - add or remove`#define WITH_SAVE_LOCATION 1` in the beginning of `main.cpp`
+    - set `set(WITH_SAVE_LOCATION 1)` in `CMakeLists.txt`. This is the default on the current code.
+    - The last location is saved with writing the GPS positon to flash when fix is obtained, and then loaded at startup. Some basic wear protection for is done by writing data to 16 pages (on full sector), and waiting that the all 16 are full before erasing the memory. The sector chosen is the penultimate one from flash, this can be changed in `main.cpp` : 
+``` c++
+#ifdef WITH_SAVE_LOCATION
+#define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - 2*FLASH_SECTOR_SIZE) // working on penultimate sector
+#endif
+```
+
+- The board and platform are defined in `CMakeLists.txt`
+
+``` cmake
+set(PICO_BOARD pico2_w)
+set(PICO_PLATFORM rp2350)
+```
+
+Once everything is set up,  building it is done with :
 ```
 cd starmap-obe/examples/StarmapPico
 mkdir -p build
 cd build
-cmake .. -DPICO_BOARD=pico_w -DWIFI_SSID="<your wifi ssid>" -DWIFI_PASSWORD="<your wifi password>"
+cmake .. -DWIFI_SSID="<your wifi ssid>" -DWIFI_PASSWORD="<your wifi password>"
 make
 ```
 *Make sure to put the correct values for `<your wifi ssid>` and `<your wifi password>`*.
@@ -405,6 +434,14 @@ The code makes use of the 4 buttons on the Pimoroni pico display pack :
   - In manual mode, `A` and `B` buttons add or remove one hour to the current time. Keeping the button pressed gradually increment the number of hours until released, allowing the calculation to be made and the screen to be updated. The number of hours that will be added and the button is released is shwon as small number is shown below the hour figure. 
 - `Y` : cycles through magnitude from [-1 ; 5]
 
+#### Visual indicators
+starmap-obe relies on some visual indication for tracking usage :
+- *LED* : The screen led will be `white` in auto mode, `blue` in manual mode, and `yellow` while the starmap is computed
+- *Manual text on the bottom left* : when in manual mode, `MANUAL` is written in blue on the bottom left of the screen
+- *Coordinates* : the color of the coordinates depends on fix status and origin of location
+  - `gray color/white color` means that it is the default hardcoded coordinates
+  - `green color` means that coordinates are from gps fix and recent. The `green color` will eventually fade to `yellow` then `red` gradually with each iteration of calculation (every minutes in auto mode) if the coordinates are not refreshed from the gps (e.g fix lost)
+  - `purple color` means coordinates are the one read from flash, i.e the last saved coordinates
 
 ### Serial console
 ``` bash

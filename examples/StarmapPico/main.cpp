@@ -47,6 +47,12 @@ extern "C" {
 #include "lwrb/lwrb.h"
 #endif
 
+// Flash memory handlng
+#ifdef WITH_SAVE_LOCATION
+#include "hardware/flash.h" // for the flash erasing and writing
+#include "hardware/sync.h" // for the interrupts
+#endif
+
 using namespace pimoroni;
 
 // ******** defines ********
@@ -135,7 +141,6 @@ typedef struct NTP_T_ {
 #endif
 
 //GPS
-//#define WITH_GPS
 #ifdef WITH_GPS
 #define GPS_UART_TX 0
 #define GPS_UART_RX 1
@@ -153,7 +158,11 @@ typedef struct NTP_T_ {
 #define SET_UPDATE_INTERVAL_10Hz    "$PMTK220,100"
 #endif
 
-// flash memory
+#ifdef WITH_SAVE_LOCATION
+#define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - 2*FLASH_SECTOR_SIZE) // working on penultimate sector
+#endif
+
+// external flash memory
 // // Flash memory Chip Select (manually controlled CS)
 // #define FLASH_CS 6
 // // Flash memory command to read data
@@ -225,14 +234,27 @@ const char* command_NMEA_OUTPUT_ALL_DATA = SET_NMEA_OUTPUT_ALL_DATA;
 const char* command_BAUDRATE_115200 = SET_NMEA_BAUDRATE_115200;
 const char* command_SET_UPDATE_INTERVAL_10Hz = SET_UPDATE_INTERVAL_10Hz;
 
-static size_t write_ptr;
+static size_t write_ptr; // write pointer to get uart data from gps into a buffer
 
-int gps_working;
-int fix_obtained;
-int minutes_since_fix;
+int gps_working; // 1 if uart was initialised successfully
+int fix_obtained; // 1 if fix was obtained
+int iter_since_fix; // nb of iterations since last fix to keep track of ages of coordinates displayed
+int pull_gps_coordinates; // bool to specify whether getting or not gps coordinates is required
 
 // colors for fading coordinates
 const uint16_t col_lat_lon[5] = {LON_LAT_COLOR_0, LON_LAT_COLOR_1, LON_LAT_COLOR_2, LON_LAT_COLOR_3, LON_LAT_COLOR_4};
+#endif
+
+#ifdef WITH_SAVE_LOCATION
+struct SavedLocation {
+  double saved_latitude;
+  double saved_longitude;
+};
+
+SavedLocation myData;
+
+int data_obtained_from_flash;
+
 #endif
 
 // using flash memory
@@ -267,6 +289,13 @@ static void ntp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *a
 static void ntp_request(NTP_T *state);
 static void ntp_result(NTP_T* state, int status, time_t *result);
 static void ntp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
+#endif
+// With save location to flash enabled
+#ifdef WITH_SAVE_LOCATION
+int save_data_to_flash(int page); // write data from page. If -1 is supplied, the function calls get_empty_page_index() to automatically find the page to write. Returns index of page written
+int read_data_from_flash(int page); // read data from page. If -1 is supplied, the function calls get_empty_page_index() to automatically find the page to read. Returns index of page read
+int get_empty_page_index(void); // return the index (from 0 to 15) of first empty page
+int erase_flash_pages(void); //erase flash pages and return 0, which is the page index of first empty page
 #endif
 
 // plot_pixel
@@ -384,7 +413,7 @@ int main() {
   graphics.set_pen(BLACK);
   graphics.clear();
   st7789.update(&graphics);
-  led.set_rgb(200, 200, 200);
+  led.set_rgb(200, 200, 0);
   printf("Screen Setup\r\n");
 
   graphics.set_pen(WHITE);
@@ -599,7 +628,8 @@ int main() {
 
     // setting up GPS status bools
     fix_obtained = 0;
-    minutes_since_fix = 0;
+    iter_since_fix = 0;
+    pull_gps_coordinates = 1; //bool to specify whether getting or not gps coordinates is required
 
     graphics.set_pen(GREEN);
     y_pos_log +=10;
@@ -611,6 +641,40 @@ int main() {
     graphics.text("Failed to init GPS uart0. Casablanca, Morocco position set !\n", Point(5,y_pos_log), 240, 1);
     st7789.update(&graphics);
   }
+
+#ifdef WITH_SAVE_LOCATION
+  printf("Initialising with saved location\n");
+  // int myDataSize = sizeof(myData);
+
+  // printf("Some stats :\n");
+  // int writeSize = (myDataSize / FLASH_PAGE_SIZE) + 1; // how many flash pages we're gonna need to write
+  // int sectorCount = ((writeSize * FLASH_PAGE_SIZE) / FLASH_SECTOR_SIZE) + 1; // how many flash sectors we're gonna need to erase
+  // printf("       FLASH_PAGE_SIZE = %d bytes\n",FLASH_PAGE_SIZE);
+  // printf("       FLASH_SECTOR_SIZE = %d bytes\n", FLASH_SECTOR_SIZE);
+  // printf("       PICO_FLASH_SIZE_BYTES = %d bytes\n", PICO_FLASH_SIZE_BYTES);
+  // printf("       XIP_BASE = %#x\n", XIP_BASE);
+  // printf("       Data size : %d bytes\n", myDataSize);
+  // printf("       write size : %d pages\n", writeSize);
+  // printf("       Sector count for erasing : %d sectors\n", sectorCount);
+
+  if (read_data_from_flash(-1) != -1) {
+    printf("Found saved coordinates in flash, restored!\n");
+    starmap.siteLat = myData.saved_latitude;
+    starmap.siteLon = myData.saved_longitude;
+    data_obtained_from_flash = 1;
+
+    graphics.set_pen(GREEN);
+    y_pos_log +=10;
+    graphics.text("Found saved coordinates in flash, restored!\n", Point(5,y_pos_log), 240, 1);
+    st7789.update(&graphics);
+  } else {
+    printf("No data found in flash, using default values\n");
+    graphics.set_pen(RED);
+    y_pos_log +=10;
+    graphics.text("No data found in flash, using default values\n", Point(5,y_pos_log), 240, 1);
+    st7789.update(&graphics);
+  }
+#endif
 #endif
 
   /* Starting main loop */
@@ -623,20 +687,21 @@ int main() {
 
   graphics.set_pen(WHITE);
   y_pos_log +=10;
-  graphics.text("Beginning loop! in 2 sec...", Point(5,y_pos_log), 240, 1);
+  graphics.text("Beginning loop! in 1 sec...", Point(5,y_pos_log), 240, 1);
   st7789.update(&graphics);
-  sleep_ms(2000);
+  sleep_ms(1000);
 
   while(FOREVER){
     // switching mode with button X
     if(button_x.raw()) { // Switching mode
       mode = !mode;
       to_update = 1;
-      if (!mode) {
-        led.set_rgb(255, 0, 0);
-      } else {
-        led.set_rgb(200, 200, 200);
+#ifdef WITH_GPS
+      if (mode) {
+        pull_gps_coordinates = 1;
       }
+#endif
+      led.set_rgb(200, 200, 0);
     }
 
     // Button y allows cycling throug magnitudes
@@ -702,15 +767,21 @@ int main() {
       snprintf(starmap.log2ram_buf, nbytes,"time=%f.\n", starmap.jdtime);
 
 #ifdef WITH_GPS
-      if (mode && gps_working) {
+      if (mode && gps_working && pull_gps_coordinates) {
         fix_obtained = 0;
+        pull_gps_coordinates = 0;
         if (get_fix()) {
           starmap.siteLat = hgps.latitude;
           starmap.siteLon = hgps.longitude;
-          minutes_since_fix = 0;
+          iter_since_fix = 0;
           fix_obtained = 1;
+#ifdef WITH_SAVE_LOCATION
+          myData.saved_latitude = starmap.siteLat;
+          myData.saved_longitude = starmap.siteLon;
+          save_data_to_flash(-1);
+#endif
         } else {
-          minutes_since_fix += 1;
+          iter_since_fix += 1;
         }
       }
 #endif
@@ -741,7 +812,7 @@ int main() {
       lat = starmap.siteLat;
       lon = starmap.siteLon;
 #ifdef WITH_GPS
-      disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, calc_color_lan_lon(fix_obtained,minutes_since_fix));
+      disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, calc_color_lan_lon(fix_obtained,iter_since_fix));
 #else
       disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
 #endif
@@ -753,11 +824,16 @@ int main() {
       disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
       // draw MANUAL
       if (!mode) {
-        disp_manual_mode(X_POS_MANUAL,Y_POS_MANUAL,RED_COLOR);
+        disp_manual_mode(X_POS_MANUAL,Y_POS_MANUAL,BLUE_COLOR);
       }
 
       // update the screen
       st7789.update(&graphics);
+
+      // set color of led depending on current mode
+      // auto mode = white
+      // manual mode = blue
+       !mode ? led.set_rgb(0, 0, 200) : led.set_rgb(200, 200, 200);
 
       //get the last time the screen was updated
       if (mode) {
@@ -777,12 +853,15 @@ int main() {
       if (difftime(t, ts) > starmap_update_period){
         loop = 0;
         to_update = 1;
+#ifdef WITH_GPS
+        pull_gps_coordinates = 1;
+#endif
       }
 
       if (min != old_min) {
 #ifdef WITH_GPS
-        minutes_since_fix += 1; //increment counter since fix
-        printf("Fix status : %d, Min since last fix : %d\n", fix_obtained, minutes_since_fix);
+        iter_since_fix += 1; //increment counter since fix
+        printf("Fix status : %d, Min since last fix : %d\n", fix_obtained, iter_since_fix);
 #endif
         old_min = min;
         printf("updating the time\n");
@@ -790,7 +869,7 @@ int main() {
         lat = starmap.siteLat;
         lon = starmap.siteLon;
 #ifdef WITH_GPS
-        disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, calc_color_lan_lon(fix_obtained,minutes_since_fix));
+        disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, calc_color_lan_lon(fix_obtained,iter_since_fix));
 #else
         disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
 #endif
@@ -808,11 +887,12 @@ int main() {
         loop = 0;
         mode = !mode;
         to_update = 1;
-        if (!mode) {
-          led.set_rgb(255, 0, 0);
-        } else {
-          led.set_rgb(200, 200, 200);
+#ifdef WITH_GPS
+        if (mode) {
+          pull_gps_coordinates = 1;
         }
+#endif
+        led.set_rgb(200,200,0);
       }
       if(button_y.raw()) { // cycling through the magnitudes
         loop = 0;
@@ -820,10 +900,10 @@ int main() {
         mag = (mag++ <= 5) ? mag : -1;
       }
 
-      //printf("in small loop\n");
+      //in small loop
       sleep_ms(200);
     }
-    //printf("in big loop\n");
+    //in big loop
     sleep_ms(200);
   }
   return(0);
@@ -1233,6 +1313,9 @@ int get_fix(void) {
 
 int calc_color_lan_lon(int is_fix_obtained, int min_since_last_fix) {
   //printf("Color index : %d\n", (min_since_last_fix - 1) / 2);
+#ifdef WITH_SAVE_LOCATION
+  if(!is_fix_obtained && data_obtained_from_flash) return LILAC_COLOR;
+#endif
   if(!is_fix_obtained) return GREY_COLOR;
   if(!min_since_last_fix) return GREEN_COLOR;
   // exploiting integer division: mapping the cases to deal with to 0, 1, 2, 3 and 4
@@ -1243,6 +1326,81 @@ int calc_color_lan_lon(int is_fix_obtained, int min_since_last_fix) {
 
 }
 
+#endif
+
+// with save location to flash memory
+#ifdef WITH_SAVE_LOCATION
+int save_data_to_flash(int page) {
+    int page_to_write;
+    page_to_write = page == -1 ? get_empty_page_index() : page;
+    if (page_to_write < 0) {
+      page_to_write = erase_flash_pages();
+      page_to_write = 0;
+    }
+
+    uint8_t* myDataAsBytes = (uint8_t*) &myData;
+    int myDataSize = sizeof(myData);
+    int writeSize = (myDataSize / FLASH_PAGE_SIZE) + 1; // how many flash pages we're gonna need to write
+
+    printf("Saving data location to flash...\n");
+
+    uint32_t interrupts = save_and_disable_interrupts();
+    flash_range_program(FLASH_TARGET_OFFSET + (page_to_write*FLASH_PAGE_SIZE), myDataAsBytes, FLASH_PAGE_SIZE * writeSize);
+    restore_interrupts(interrupts);
+
+    printf("Done saving data!\n");
+    return page_to_write;
+}
+
+int read_data_from_flash(int page) {
+  int page_to_read;
+  if (page == -1) {
+    int index = get_empty_page_index();
+    if (index == -1) {
+      page_to_read = 15;
+    } else if (index == 0) {
+      printf("No data to read!\n");
+      page_to_read = -1;
+    } else {
+        page_to_read = index - 1;
+    }
+  } else {
+    page_to_read = page;
+  }
+  if (page_to_read >= 0) {
+    printf("Reading from page #%i\n", page_to_read);
+    const uint8_t* flash_target_contents = (const uint8_t *) (XIP_BASE + FLASH_TARGET_OFFSET + (page_to_read * FLASH_PAGE_SIZE));
+    memcpy(&myData, flash_target_contents, sizeof(myData));
+  }
+
+  return page_to_read;
+}
+
+int get_empty_page_index() {
+  unsigned int page;
+  int first_empty_page = -1;
+  int *p, addr;
+
+  for(page = 0; page < FLASH_SECTOR_SIZE/FLASH_PAGE_SIZE; page++){
+    addr = XIP_BASE + FLASH_TARGET_OFFSET + (page * FLASH_PAGE_SIZE);
+    p = (int *)addr;
+    //printf("First four bytes of page %i ( at %#x ) = %d\n", page, int(p), *p);
+    if( *p == -1 && first_empty_page < 0){
+      first_empty_page = page;
+      //printf("First empty page is #%d\n", first_empty_page);
+    }
+  }
+
+  return first_empty_page;
+}
+
+int erase_flash_pages() {
+  printf("Full sector, erasing...\n");
+  uint32_t ints = save_and_disable_interrupts();
+  flash_range_erase(FLASH_TARGET_OFFSET, FLASH_SECTOR_SIZE);
+  restore_interrupts (ints);
+  return 0;
+}
 #endif
 // ************ Yale star data *****************
 

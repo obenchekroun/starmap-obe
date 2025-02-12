@@ -5,9 +5,10 @@ cmake_minimum_required(VERSION 3.13)
 set(PICO_BOARD pico2_w)
 set(PICO_PLATFORM rp2350)
 
-# Set if want to use ntp
-set(WITH_NTP 1)
+# Set if want to use ntp/gps/save last location to flash memory
+set(WITH_NTP 0)
 set(WITH_GPS 1)
+set(WITH_SAVE_LOCATION 1)
 
 # Include the Pico SDK initialization script
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
@@ -40,6 +41,13 @@ endif()
 if(WITH_GPS)
         add_compile_definitions(
             WITH_GPS
+            LWRB_DISABLE_ATOMIC # #define LWRB_DISABLE_ATOMIC as not implemented to pico (for lwrb)
+    )
+endif()
+
+if(WITH_SAVE_LOCATION)
+        add_compile_definitions(
+            WITH_SAVE_LOCATION
             LWRB_DISABLE_ATOMIC # #define LWRB_DISABLE_ATOMIC as not implemented to pico (for lwrb)
     )
 endif()
@@ -110,6 +118,10 @@ endif()
 
 if(WITH_GPS)
     set(my_lib ${my_lib} lwgps lwrb)
+endif()
+
+if(WITH_SAVE_LOCATION)
+    set(my_lib ${my_lib} hardware_flash)
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${my_lib})
