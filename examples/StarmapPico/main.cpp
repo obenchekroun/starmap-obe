@@ -67,7 +67,7 @@ using namespace pimoroni;
 // default co-ordinates, lat: deg N, lon: deg W
 #define DEFAULT_LAT 33.589886
 #define DEFAULT_LON -7.603869
-#define TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
+#define DISPLAYED_TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
 //Some colors in RGB565 format for the display
 #define SM_COL_COORD_GRID        0x4a49
 #define SM_COL_ECLIPTIC          0xab91
@@ -375,6 +375,7 @@ int main() {
   time_t t; // get current time from system
   time_t ts; // timestamp to check if period delay of update has passed
   struct tm tm; // structure for the time
+  struct tm tm_displayed; // structure for the time DISPLAYED
   int dotw; //day of the week
   int month_nb; //month
   int loop; // 1 for loop of time updating running, 0 to update image
@@ -424,6 +425,7 @@ int main() {
 
   // initializing RTC
   printf("Initialising DS3231 ...\n");
+  //Time stored as GMT for the purpose of starmap, and the offset is only added to the displayed time
   graphics.set_pen(WHITE);
   y_pos_log = 40;
   graphics.text("Initialising DS3231 ...", Point(5,y_pos_log), 240, 1);
@@ -750,10 +752,14 @@ int main() {
         aon_timer_get_time_calendar(&tm);
         t = mktime(&tm);
       }
-      hr = tm.tm_hour;
-      min = tm.tm_min;
+      //hr = tm.tm_hour;
+      //min = tm.tm_min;
+      // Adding the time zone offset for the time that will be displayed
+      tm_displayed = tm;
+      tm_displayed.tm_hour = tm_displayed.tm_hour + DISPLAYED_TIMEZONE_OFFSET;
+      mktime(&tm_displayed);
 
-      printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d --- Location: LAT=%f and LONG=%f --- Magnitude = %.0lf\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon, mag);
+      printf("Generating for now: %d-%02d-%02d %02d:%02d:%02d GMT --- Location: LAT=%f and LONG=%f --- Magnitude = %.0lf\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, starmap.siteLat, starmap.siteLon, mag);
 
       mytime.tm_sec=tm.tm_sec;   // seconds 0-61?
       mytime.tm_min=tm.tm_min;  // minutes 0-59
@@ -817,9 +823,9 @@ int main() {
       disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
 #endif
       // Draw time on screen
-      disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
+      disp_time(tm_displayed.tm_hour, tm_displayed.tm_min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
       // Draw date
-      disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
+      disp_date(tm_displayed.tm_year + 1900, tm_displayed.tm_mon, tm_displayed.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
       //draw magnitude
       disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
       // draw MANUAL
@@ -848,6 +854,11 @@ int main() {
     while (loop && mode) {
       aon_timer_get_time_calendar(&tm);
       t = mktime(&tm);
+      // Adding the time zone offset for the time that will be displayed
+      tm_displayed = tm;
+      tm_displayed.tm_hour = tm_displayed.tm_hour + DISPLAYED_TIMEZONE_OFFSET;
+      mktime(&tm_displayed);
+
       hr = tm.tm_hour;
       min = tm.tm_min;
       if (difftime(t, ts) > starmap_update_period){
@@ -874,9 +885,9 @@ int main() {
         disp_lat_lon(lat, lon, X_POS_LAT_LON, Y_POS_LAT_LON, WHITE_COLOR);
 #endif
         // Draw time
-        disp_time(hr, min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
+        disp_time(tm_displayed.tm_hour, tm_displayed.tm_min, X_POS_TIME, Y_POS_TIME, WHITE_COLOR);
         // Draw date
-        disp_date(tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
+        disp_date(tm_displayed.tm_year + 1900, tm_displayed.tm_mon, tm_displayed.tm_mday, X_POS_DATE, Y_POS_DATE, GOLD_COLOR);
         //draw magnitude
         disp_magnitude(mag, X_POS_MAGN, Y_POS_MAGN, GOLD_COLOR);
         // Displaying the image
@@ -1124,7 +1135,7 @@ const char *wd(int year, int month, int day) {
 static void ntp_result(NTP_T* state, int status, time_t *result) {
     if (status == 0 && result) {
         struct tm *utc = gmtime(result);
-        utc->tm_hour = utc->tm_hour + TIMEZONE_OFFSET;
+        //utc->tm_hour = utc->tm_hour + DISPLAYED_TIMEZONE_OFFSET; //Time stored as GMT for the purpose of starmap, and the offset is only added to the displayed time
         mktime(utc);
         printf("got ntp response: %02d/%02d/%04d %02d:%02d:%02d\n", utc->tm_mday, utc->tm_mon + 1, utc->tm_year + 1900,
                utc->tm_hour, utc->tm_min, utc->tm_sec);
