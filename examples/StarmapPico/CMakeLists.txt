@@ -6,7 +6,7 @@ set(PICO_BOARD pico2_w)
 set(PICO_PLATFORM rp2350)
 
 # Set if want to use ntp/gps/save last location to flash memory
-set(WITH_NTP 1)
+set(WITH_NTP 0)
 set(WITH_GPS 1)
 set(WITH_SAVE_LOCATION 1)
 
