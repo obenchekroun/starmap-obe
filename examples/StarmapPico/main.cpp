@@ -142,8 +142,8 @@ typedef struct NTP_T_ {
 
 //GPS
 #ifdef WITH_GPS
-#define GPS_UART_TX 0
-#define GPS_UART_RX 1
+//#define GPS_UART_TX 0
+//#define GPS_UART_RX 1
 #ifndef PICO_DEFAULT_UART_TX_PIN
 #define PICO_DEFAULT_UART_TX_PIN 0
 #endif
