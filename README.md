@@ -310,7 +310,7 @@ sudo make -j 8
 sudo ./main 1.28
 ```
 
-## Starmap on RP2040/RP2350 wifi board + Pico Display Pack 2.0 + DS3231 + GPS module
+## Starmap on RP2040/RP2350 wifi board + Pico Display Pack 2.0 (or 2.8) + DS3231 + GPS module
 
 ### Required hardware
 - RP2040 or RP2350 board
@@ -381,6 +381,16 @@ MEMORY
 #define RTC_INT_PIN 18
 ```
 
+- Pin used for the GPS
+
+| GPS | RP pico     | RP pico pin |
+|-----|-------------|-------------|
+| VCC | 3V3         | Pin 36      |
+| GND | GND         | Pin 38 e.g  |
+| RX  | TX - GPIO 0 | Pin 1       |
+| TX  | RX - GPIO 1 | Pin 2       |
+
+
 - Timezone offset for the NTP, in `main.cpp` : 
 ``` c++
 #define TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
@@ -390,9 +400,13 @@ MEMORY
     - add or remove`#define WITH_NTP 1` in the beginning of `main.cpp`
     - set `set(WITH_NTP 1)` in `CMakeLists.txt`. This is the default on the current code.
     
-- To define the use of GPS,, you can either :
+- To define the use of GPS, you can either :
     - add or remove`#define WITH_GPS 1` in the beginning of `main.cpp`
     - set `set(WITH_GPS 1)` in `CMakeLists.txt`. This is the default on the current code.
+    
+- To define the use of pimorioni display pack 2.0'' or 2.8'', you can either :
+    - add or remove`#define WITH_DISPLAY_PACK_28 1` in the beginning of `main.cpp`
+    - set `set(WITH_DISPLAY_PACK_28 1)` in `CMakeLists.txt`. By default, This is the default on the current code
     
 - To define the save last location to flash,, you can either :
     - add or remove`#define WITH_SAVE_LOCATION 1` in the beginning of `main.cpp`

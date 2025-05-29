@@ -34,7 +34,11 @@ extern "C" {
 #endif
 
 // Display libraries
+#ifdef WITH_DISPLAY_PACK_28
+#include "libraries/pico_display_28/pico_display_28.hpp"
+#else
 #include "libraries/pico_display_2/pico_display_2.hpp"
+#endif
 #include "drivers/st7789/st7789.hpp"
 #include "libraries/pico_graphics/pico_graphics.hpp"
 #include "rgbled.hpp"
@@ -67,7 +71,7 @@ using namespace pimoroni;
 // default co-ordinates, lat: deg N, lon: deg W
 #define DEFAULT_LAT 33.589886
 #define DEFAULT_LON -7.603869
-#define DISPLAYED_TIMEZONE_OFFSET 2 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
+#define DISPLAYED_TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
 //Some colors in RGB565 format for the display
 #define SM_COL_COORD_GRID        0x4a49
 #define SM_COL_ECLIPTIC          0xab91
@@ -194,11 +198,19 @@ int y_pos_log;
 // for the display
 ST7789 st7789(320, 240, ROTATE_90, false, get_spi_pins(BG_SPI_FRONT));
 PicoGraphics_PenRGB565 graphics(st7789.width, st7789.height, nullptr);
+#ifdef WITH_DISPLAY_PACK_28
+RGBLED led(PicoDisplay28::LED_R, PicoDisplay28::LED_G, PicoDisplay28::LED_B);
+Button button_a(PicoDisplay28::A);
+Button button_b(PicoDisplay28::B);
+Button button_x(PicoDisplay28::X);
+Button button_y(PicoDisplay28::Y);
+#else
 RGBLED led(PicoDisplay2::LED_R, PicoDisplay2::LED_G, PicoDisplay2::LED_B);
 Button button_a(PicoDisplay2::A);
 Button button_b(PicoDisplay2::B);
 Button button_x(PicoDisplay2::X);
 Button button_y(PicoDisplay2::Y);
+#endif
 Pen BG;
 Pen WHITE;
 Pen BLACK;
@@ -1309,7 +1321,7 @@ int get_fix(void) {
       write_ptr = 0;
       memset(buff_t, '\0', sizeof(buff_t));
       printf("GPS data received :\n");
-      //printf("%s\n", buff_t);
+      printf("%s\n", buff_t);
       printf("        Fix status :%d\r\n", hgps.fix);
       printf("        Latitude: %f degrees\r\n", hgps.latitude);
       printf("        Longitude: %f degrees\r\n", hgps.longitude);

@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 set(PICO_BOARD pico_w)
+#set(PICO_BOARD pico2_w)
+#set(PICO_PLATFORM rp2350)
 #set(WIFI_SSID "<PUT WIFI SSID HERE>")
 #set(WIFI_PASSWORD "<PUT WIFI PASSWORD>")
 

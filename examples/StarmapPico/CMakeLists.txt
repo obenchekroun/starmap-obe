@@ -9,6 +9,7 @@ set(PICO_PLATFORM rp2350)
 set(WITH_NTP 0)
 set(WITH_GPS 1)
 set(WITH_SAVE_LOCATION 1)
+set(WITH_DISPLAY_PACK_28 1) # 0 for display pack 2.0 inch, 1 for display pack 2.8 inch
 
 # Include the Pico SDK initialization script
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
@@ -52,22 +53,31 @@ if(WITH_SAVE_LOCATION)
     )
 endif()
 
+if(WITH_DISPLAY_PACK_28)
+        add_compile_definitions(
+            WITH_DISPLAY_PACK_28
+    )
+endif()
+
+
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 # add compiled files subdirectory
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789 build/st7789) # Pico dislay pack 2 driver
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789 build/st7789) # Pico dislay pack 2 and 2.8 driver
 add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_2 build/pico_display_2) # Pico dislay pack 2 lib
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_28 build/pico_display_28) # Pico dislay pack 2.8 lib
 add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_graphics build/pico_graphics) # Pico graphics lib
 add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/common build/common) # Common dependencies for pimoroni libraries
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled build/rgbled) # Managing led of display pack 2
-add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/button build/button) # Managing buttons of display pack 2
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled build/rgbled) # Managing led of display pack 2 and 2.8
+add_subdirectory($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/button build/button) # Managing buttons of display pack 2 and 2.8
 add_subdirectory(../../lib/pico-ds3231 build/pico-ds3231) # DS3231 lib & drivers
 add_subdirectory(../../lib/lwgps build/lwgps) # gps NMEA parser
 add_subdirectory(../../lib/lwrb build/lwrb) #ring buffer for the gps parser
 
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/st7789)
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_2)
+include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_display_28)
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/libraries/pico_graphics)
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/common)
 include_directories($ENV{PICO_SDK_PATH}/../pimoroni-pico/drivers/rgbled)
@@ -104,7 +114,7 @@ set(my_lib
      hardware_dma
      rgbled
      button
-     pico_display_2
+     #pico_display_2
      st7789
      pico_graphics
      pico_aon_timer #instead of hardware_rtc so the code works both for RP2040 and RP2350
@@ -123,6 +133,13 @@ endif()
 if(WITH_SAVE_LOCATION)
     set(my_lib ${my_lib} hardware_flash)
 endif()
+
+if(WITH_DISPLAY_PACK_28)
+    set(my_lib ${my_lib} pico_display_28)
+else()
+  set(my_lib ${my_lib} pico_display_2)
+endif()
+
 
 target_link_libraries(${PROJECT_NAME} ${my_lib})
 
