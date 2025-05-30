@@ -390,6 +390,12 @@ MEMORY
 | RX  | TX - GPIO 0 | Pin 1       |
 | TX  | RX - GPIO 1 | Pin 2       |
 
+- `BAUDRATE` for the GPS : The GPS baudrate should be set in `main.cpp` : 
+
+``` c++
+#define GPS_BAUD_RATE 115200
+```
+Make sure to correctly set the BAUDRATE to the one of your GPS chip, otherwise the code won't work. You can change the default baudrate of your chip by sending specific command (e.g $PMTK251 command for waveshare LC76 and adafruit GPS module). To do so, initialise an uart connection with current baudrate, send the command, and then open a new serial connection with new baudrate. As long as a battery is connected, the GPS module should keep the defined baudrate. You can use the code of `examples/test_gps` to do so.
 
 - Timezone offset for the NTP, in `main.cpp` : 
 ``` c++

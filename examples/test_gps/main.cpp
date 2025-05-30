@@ -27,7 +27,7 @@
 #endif
 
 #define GPS_BAUD_RATE 115200
-//#define GPS_BAUD_RATE 115200
+//#define GPS_BAUD_RATE 9600
 //Baud rate
 #define SET_NMEA_BAUDRATE_115200    "$PMTK251,115200"
 #define SET_NMEA_OUTPUT             "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,0"
@@ -132,16 +132,17 @@ int main() {
     //L76X_Send_Command(SET_POS_FIX_400MS);
 
     //Set output message
-    L76X_send_command((char*)command_NMEA_OUTPUT);
+    //L76X_send_command((char*)command_NMEA_OUTPUT);
     //L76X_send_command((char*)command_SET_SYNC_PPS_NMEA_ON);
 
     //printf("Change the L76X output baud rate to 115200 \r\n");
-    //L76X_Send_Command(SET_NMEA_BAUDRATE_115200);
+    L76X_send_command((char*)command_BAUDRATE_115200);
     sleep_ms(100);
 
     while (true) {
         //L76X_send_command((char*)command_SET_NORMAL_MODE);
-        sleep_ms(200);
+
+        //sleep_ms(200);
         /* Add new character to buffer */
         /* UART interrupt handler on host microcontroller */
         uart_irqhandler();
@@ -167,6 +168,7 @@ int main() {
             printf("From Waveshare parser :\n");
             printf("          Time: %d:%d:%d \r\n", GPS.Time_H, GPS.Time_M, GPS.Time_S);
             printf("          Latitude and longitude: %lf  %c  %lf  %c\r\n", GPS.Lat, GPS.Lat_area, GPS.Lon, GPS.Lon_area);
+            write_ptr = 0;
             sleep_ms(10000);
         }
     }
@@ -179,7 +181,7 @@ static void uart_irqhandler(void) {
     if (write_ptr < BUFFSIZE) {
         /* Write to buffer only */
         buff_t[write_ptr] = uart_getc(uart0);
-        //printf("Datawritten : %c\n", buff_t[write_ptr]);
+        printf("Datawritten : %c\n", buff_t[write_ptr]);
         lwrb_write(&hgps_buff,&buff_t[write_ptr], 1);
         ++write_ptr;
     }
