@@ -71,7 +71,7 @@ using namespace pimoroni;
 // default co-ordinates, lat: deg N, lon: deg W
 #define DEFAULT_LAT 33.589886
 #define DEFAULT_LON -7.603869
-#define DISPLAYED_TIMEZONE_OFFSET 1 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
+#define DISPLAYED_TIMEZONE_OFFSET 0 // time offset, example: 1 hour ahead of UTC (e.g. Africa/Casablanca Time) is 1
 //Some colors in RGB565 format for the display
 #define SM_COL_COORD_GRID        0x4a49
 #define SM_COL_ECLIPTIC          0xab91
@@ -365,6 +365,8 @@ int main() {
   printf("-------------- Welcome to starmap-obe Pico -----------------\n\n");
   /* Hardware initialisation */
   stdio_init_all(); // Initialize standard IO
+  //sleep_ms(5000);
+  //printf("TEST\n");
 #ifdef WITH_GPS
   gps_working = 0;
   uart_init(uart0, GPS_BAUD_RATE);

@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
 
+#set(PICO_BOARD pico_w)
+set(PICO_BOARD pico2_w)
+set(PICO_PLATFORM rp2350)
+
 # Include the Pico SDK initialization script
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
 include($ENV{PICO_SDK_PATH}/../pimoroni-pico/pimoroni_pico_import.cmake)
@@ -11,9 +15,6 @@ set(CMAKE_CXX_STANDARD 17)
 # Initialize the Pico SDK
 pico_sdk_init()
 
-set(PICO_BOARD pico_w)
-#set(PICO_BOARD pico2_w)
-#set(PICO_PLATFORM rp2350)
 #set(WIFI_SSID "<PUT WIFI SSID HERE>")
 #set(WIFI_PASSWORD "<PUT WIFI PASSWORD>")
 

@@ -26,8 +26,8 @@
 #define PICO_DEFAULT_UART_TX_PIN 0
 #endif
 
-#define GPS_BAUD_RATE 115200
-//#define GPS_BAUD_RATE 9600
+//#define GPS_BAUD_RATE 115200
+#define GPS_BAUD_RATE 9600
 //Baud rate
 #define SET_NMEA_BAUDRATE_115200    "$PMTK251,115200"
 #define SET_NMEA_OUTPUT             "$PMTK314,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,0"
@@ -135,9 +135,10 @@ int main() {
     //L76X_send_command((char*)command_NMEA_OUTPUT);
     //L76X_send_command((char*)command_SET_SYNC_PPS_NMEA_ON);
 
-    //printf("Change the L76X output baud rate to 115200 \r\n");
+    printf("Change the L76X output baud rate to 115200 \r\n");
     L76X_send_command((char*)command_BAUDRATE_115200);
     sleep_ms(100);
+    printf(" baud rate set to 115200 \r\n");
 
     while (true) {
         //L76X_send_command((char*)command_SET_NORMAL_MODE);
